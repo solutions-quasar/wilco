@@ -161,7 +161,13 @@ const crm = {
             console.log("Firestore Data Loaded");
         } catch (error) {
             console.error("Error loading Firestore data:", error);
-            // alert("Error loading data. Check console."); 
+            alert("Database Error: " + error.message + "\n\nCheck your Firestore Security Rules!");
+        }
+    },
+
+    forceSeed: async function () {
+        if (confirm("This will attempt to write default data to your database. Continue?")) {
+            await this.seedFirestoreData();
         }
     },
 
@@ -198,9 +204,11 @@ const crm = {
         try {
             await batch.commit();
             console.log("Database Seeded Successfully.");
+            alert("Success! Default data has been written to your database.");
             this.loadFirestoreData(); // Reload to render
         } catch (error) {
             console.error("Error Seeding DB:", error);
+            alert("Seeding Failed: " + error.message + "\n\nLikely a permission issue.");
         }
     },
 
