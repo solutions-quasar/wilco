@@ -16,10 +16,10 @@ const crm = {
     currentViewDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
 
     init: function () {
-        if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== "YOUR_API_KEY") {
-            this.startFirebaseMode();
-        } else {
+        if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey === "YOUR_API_KEY") {
             this.startMockMode();
+        } else {
+            this.startFirebaseMode();
         }
 
         this.setupEventListeners();
@@ -69,28 +69,7 @@ const crm = {
         this.loadLocalData();
     },
 
-    startFirebaseMode: function () {
-        this.isMock = false;
-        console.log("Starting Firebase Mode...");
-        firebase.initializeApp(firebaseConfig);
-        this.db = firebase.firestore();
-        this.auth = firebase.auth();
-
-        // Auth State Listener
-        this.auth.onAuthStateChanged((user) => {
-            if (user) {
-                console.log("User logged in:", user.email);
-                this.showDashboard(user.email);
-                this.loadFirestoreData();
-            } else {
-                console.log("User logged out");
-                this.showLogin();
-            }
-        });
-    },
-
     loadLocalData: function () {
-        // ... (Same Mock Logic as before) ...
         const localLeads = localStorage.getItem('wilco_leads');
         const localSchedule = localStorage.getItem('wilco_schedule');
         const localInvoices = localStorage.getItem('wilco_invoices');
@@ -103,62 +82,47 @@ const crm = {
         else {
             this.leads = [
                 { id: 'lead_1', name: 'John Doe', email: 'john@example.com', service: 'Emergency Repair', status: 'New', date: today },
+                { id: 'lead_2', name: 'Sarah Smith', email: 'sarah@test.com', service: 'Water Heater', status: 'In Progress', date: today },
             ];
             this.saveLocalData();
         }
 
         if (localSchedule) this.schedule = JSON.parse(localSchedule);
         else {
-            this.schedule = [{ id: 'task_1', date: today, time: '09:00', title: 'Install Water Heater', address: '123 Maple St', client: 'Sarah Smith' }];
+            this.schedule = [
+                { id: 'task_1', date: today, time: '09:00', title: 'Install Water Heater', address: '123 Maple St', client: 'Sarah Smith' },
+            ];
             this.saveLocalData();
         }
 
         if (localInvoices) this.invoices = JSON.parse(localInvoices);
         else {
-            this.invoices = [{ id: 'INV-1001', client: 'Sarah Smith', clientId: 'client_2', date: today, amount: '450.00', status: 'Paid', items: [] }];
+            this.invoices = [
+                { id: 'INV-1001', client: 'Sarah Smith', clientId: 'client_2', date: today, amount: '450.00', status: 'Paid', items: [] },
+            ];
             this.saveLocalData();
         }
 
         if (localProducts) this.products = JSON.parse(localProducts);
         else {
-            this.products = [{ id: 'prod_1', name: 'Service Call', category: 'Service', price: '99.00' }];
+            this.products = [
+                { id: 'prod_1', name: 'Service Call', category: 'Service', price: '99.00' },
+                { id: 'prod_2', name: 'Water Heater Install', category: 'Labor', price: '450.00' },
+                { id: 'prod_3', name: 'Copper Pipe (10ft)', category: 'Materials', price: '25.50' },
+            ];
             this.saveLocalData();
         }
 
         if (localClients) this.clients = JSON.parse(localClients);
         else {
-            this.clients = [{ id: 'client_1', name: 'John Doe', email: 'john@example.com', phone: '555-0101', address: '456 Oak Ave' }];
+            this.clients = [
+                { id: 'client_1', name: 'John Doe', email: 'john@example.com', phone: '555-0101', address: '456 Oak Ave' },
+                { id: 'client_2', name: 'Sarah Smith', email: 'sarah@test.com', phone: '555-0102', address: '123 Maple St' },
+            ];
             this.saveLocalData();
         }
 
         this.renderAllViews();
-    },
-
-    loadFirestoreData: async function () {
-        if (!this.db) return;
-
-        try {
-            const leadsSnap = await this.db.collection('leads').get();
-            this.leads = leadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            const tasksSnap = await this.db.collection('tasks').get();
-            this.schedule = tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            const invoicesSnap = await this.db.collection('invoices').get();
-            this.invoices = invoicesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            const productsSnap = await this.db.collection('products').get();
-            this.products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            const clientsSnap = await this.db.collection('clients').get();
-            this.clients = clientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            this.renderAllViews();
-            console.log("Firestore Data Loaded");
-        } catch (error) {
-            console.error("Error loading Firestore data:", error);
-            alert("Error loading data. Check console.");
-        }
     },
 
     saveLocalData: function () {
@@ -170,33 +134,89 @@ const crm = {
         localStorage.setItem('wilco_clients', JSON.stringify(this.clients));
     },
 
+    loadFirestoreData: async function () {
+        if (!this.db) return;
+
+        try {
+            const leadsSnap = await this.db.collection('leads').get();
+            const tasksSnap = await this.db.collection('tasks').get();
+            const invoicesSnap = await this.db.collection('invoices').get();
+            const productsSnap = await this.db.collection('products').get();
+            const clientsSnap = await this.db.collection('clients').get();
+
+            // Check if DB is completely fresh/empty
+            if (leadsSnap.empty && tasksSnap.empty && invoicesSnap.empty && productsSnap.empty && clientsSnap.empty) {
+                console.log("Database empty. Seeding defaults...");
+                await this.seedFirestoreData();
+                return; // seed function will reload data
+            }
+
+            this.leads = leadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.schedule = tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.invoices = invoicesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.clients = clientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            this.renderAllViews();
+            console.log("Firestore Data Loaded");
+        } catch (error) {
+            console.error("Error loading Firestore data:", error);
+            // alert("Error loading data. Check console."); 
+        }
+    },
+
+    seedFirestoreData: async function () {
+        const today = new Date().toISOString().split('T')[0];
+        const batch = this.db.batch();
+
+        const defaultLeads = [
+            { id: 'lead_1', name: 'John Doe', email: 'john@example.com', service: 'Emergency Repair', status: 'New', date: today }
+        ];
+        const defaultTasks = [
+            { id: 'task_1', date: today, time: '09:00', title: 'Install Water Heater', address: '123 Maple St', client: 'Sarah Smith' }
+        ];
+        const defaultInvoices = [
+            { id: 'INV-1001', client: 'Sarah Smith', clientId: 'client_2', date: today, amount: '450.00', status: 'Paid', items: [] }
+        ];
+        const defaultProducts = [
+            { id: 'prod_1', name: 'Service Call', category: 'Service', price: '99.00' },
+            { id: 'prod_2', name: 'Water Heater Install', category: 'Labor', price: '450.00' },
+            { id: 'prod_3', name: 'Copper Pipe (10ft)', category: 'Materials', price: '25.50' }
+        ];
+        const defaultClients = [
+            { id: 'client_1', name: 'John Doe', email: 'john@example.com', phone: '555-0101', address: '456 Oak Ave' },
+            { id: 'client_2', name: 'Sarah Smith', email: 'sarah@test.com', phone: '555-0102', address: '123 Maple St' }
+        ];
+
+        // Add to batch
+        defaultLeads.forEach(item => batch.set(this.db.collection('leads').doc(item.id), item));
+        defaultTasks.forEach(item => batch.set(this.db.collection('tasks').doc(item.id), item));
+        defaultInvoices.forEach(item => batch.set(this.db.collection('invoices').doc(item.id), item));
+        defaultProducts.forEach(item => batch.set(this.db.collection('products').doc(item.id), item));
+        defaultClients.forEach(item => batch.set(this.db.collection('clients').doc(item.id), item));
+
+        try {
+            await batch.commit();
+            console.log("Database Seeded Successfully.");
+            this.loadFirestoreData(); // Reload to render
+        } catch (error) {
+            console.error("Error Seeding DB:", error);
+        }
+    },
+
     setupEventListeners: function () {
         document.getElementById('login-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
+            let email = document.getElementById('email').value;
             if (this.isMock) {
-                // Mock Login
-                const userEmail = email || "admin@wilco.com";
-                this.showDashboard(userEmail);
+                if (!email) email = "admin@wilco.com";
+                this.showDashboard(email);
                 this.renderAllViews();
-            } else {
-                // Firebase Login
-                this.auth.signInWithEmailAndPassword(email, password)
-                    .catch((error) => {
-                        console.error("Login Error:", error);
-                        alert("Login Failed: " + error.message);
-                    });
             }
         });
 
         document.getElementById('logout-btn').addEventListener('click', () => {
-            if (this.isMock) {
-                this.showLogin();
-            } else {
-                this.auth.signOut();
-            }
+            this.showLogin();
         });
 
         document.getElementById('modal-form').addEventListener('submit', (e) => {
@@ -248,8 +268,6 @@ const crm = {
             if (type === 'client') data = this.clients.find(x => x.id == id);
         }
 
-        // ... (HTML Generation Logic stays the same, omitted for brevity, logic remains identical to previous step) ...
-        // Re-implementing the innerHTML generation to ensure no regression
         if (type === 'lead') {
             title.innerText = id ? 'Edit Lead' : 'New Lead';
             container.innerHTML = `
@@ -358,6 +376,8 @@ const crm = {
         if (type === 'invoice') {
             title.innerText = id ? 'Edit Invoice' : 'New Invoice';
             const today = new Date().toISOString().split('T')[0];
+
+            // Client Dropdown Options
             const clientOptions = this.clients.map(c =>
                 `<option value="${c.id}" ${data && (data.clientId === c.id || data.client === c.name) ? 'selected' : ''}>${c.name}</option>`
             ).join('');
@@ -383,21 +403,27 @@ const crm = {
                         <option value="Cancelled" ${data && data.status == 'Cancelled' ? 'selected' : ''}>Cancelled</option>
                     </select>
                 </div>
+                
                 <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0;">
+                
                 <label style="display:block; margin-bottom: 0.5rem; color: var(--text-muted);">Line Items</label>
                 <div id="line-items-container"></div>
                 <button type="button" class="btn-secondary small" onclick="crm.addLineItem()">+ Add Item</button>
+
                 <div class="invoice-total-row">
                     <span>Total:</span>
                     <span id="invoice-total">$${data ? data.amount : '0.00'}</span>
                     <input type="hidden" name="amount" id="invoice-amount-input" value="${data ? data.amount : '0.00'}">
                 </div>
             `;
+
+            // Add existing items or one blank
             if (data && data.items && data.items.length > 0) {
                 data.items.forEach(item => crm.addLineItem(item));
             } else {
-                crm.addLineItem();
+                crm.addLineItem(); // One empty row
             }
+
             this.recalcTotal();
         }
 
@@ -405,13 +431,14 @@ const crm = {
     },
 
     addLineItem: function (item = null) {
-        // ... (Same as before) ...
         const container = document.getElementById('line-items-container');
         const row = document.createElement('div');
         row.className = 'line-item-row';
+
         const productOptions = this.products.map(p =>
             `<option value="${p.id}" data-price="${p.price}" ${item && item.productId == p.id ? 'selected' : ''}>${p.name}</option>`
         ).join('');
+
         row.innerHTML = `
             <select class="item-select" onchange="crm.updateLineItem(this)">
                 <option value="">Select Product...</option>
@@ -422,20 +449,25 @@ const crm = {
             <button type="button" class="btn-icon danger" onclick="this.parentElement.remove(); crm.recalcTotal()">×</button>
         `;
         container.appendChild(row);
+
+        if (!item) {
+            // New item logic if needed
+        }
     },
 
     updateLineItem: function (selectEl) {
-        // ... (Same as before) ...
         const row = selectEl.parentElement;
         const priceInput = row.querySelector('.item-price');
         const selectedOption = selectEl.options[selectEl.selectedIndex];
         const price = selectedOption.getAttribute('data-price');
-        if (price) priceInput.value = price;
+
+        if (price) {
+            priceInput.value = price;
+        }
         this.recalcTotal();
     },
 
     recalcTotal: function () {
-        // ... (Same as before) ...
         const rows = document.querySelectorAll('.line-item-row');
         let total = 0;
         rows.forEach(row => {
@@ -443,6 +475,7 @@ const crm = {
             const price = parseFloat(row.querySelector('.item-price').value) || 0;
             total += qty * price;
         });
+
         document.getElementById('invoice-total').innerText = '$' + total.toFixed(2);
         document.getElementById('invoice-amount-input').value = total.toFixed(2);
     },
@@ -451,16 +484,15 @@ const crm = {
         document.getElementById('modal-overlay').classList.remove('open');
     },
 
-    saveModalData: async function () {
+    saveModalData: function () {
         const form = document.getElementById('modal-form');
+        // Manual scraping because FormData can be finicky in pure JS simple implementations
         const id = document.getElementById('modal-id').value;
         const formType = document.getElementById('modal-type').value;
 
         // Base object
-        const timestamp = Date.now();
-        const docId = id || `${formType}_${timestamp}`;
-        let newItem = {
-            id: docId
+        const newItem = {
+            id: id || `${formType}_${Date.now()}`,
         };
 
         // Add basic fields
@@ -483,60 +515,53 @@ const crm = {
             });
             newItem.items = items;
 
+            // Map Client ID to Name for display
             const client = this.clients.find(c => c.id === newItem.clientId);
             if (client) newItem.client = client.name;
         }
 
-        if (formType === 'lead' && !newItem.date) newItem.date = new Date().toISOString().split('T')[0];
-
-        // --- SAVE BRANCH ---
-        if (this.isMock) {
-            // Mock Save (Updates Array & LocalStorage)
-            this.handleMockSave(formType, id, newItem);
-        } else {
-            // Firebase Save (Writes to Firestore)
-            await this.handleFirestoreSave(formType, docId, newItem);
-        }
-
-        this.closeModal();
-    },
-
-    handleMockSave: function (formType, id, newItem) {
-        // ... (Same logic as before for arrays) ...
+        // Logic by type
         if (formType === 'lead') {
-            if (id) { const i = this.leads.findIndex(x => x.id == id); if (i !== -1) this.leads[i] = { ...this.leads[i], ...newItem }; }
-            else this.leads.unshift(newItem);
+            if (!newItem.date) newItem.date = new Date().toISOString().split('T')[0];
+            if (id) {
+                const index = this.leads.findIndex(x => x.id == id);
+                if (index !== -1) this.leads[index] = { ...this.leads[index], ...newItem };
+            } else {
+                this.leads.unshift(newItem);
+            }
         } else if (formType === 'task') {
-            if (id) { const i = this.schedule.findIndex(x => x.id == id); if (i !== -1) this.schedule[i] = { ...this.schedule[i], ...newItem }; }
-            else this.schedule.push(newItem);
+            if (id) {
+                const index = this.schedule.findIndex(x => x.id == id);
+                if (index !== -1) this.schedule[index] = { ...this.schedule[index], ...newItem };
+            } else {
+                this.schedule.push(newItem);
+            }
         } else if (formType === 'invoice') {
-            if (id) { const i = this.invoices.findIndex(x => x.id == id); if (i !== -1) this.invoices[i] = { ...this.invoices[i], ...newItem }; }
-            else this.invoices.unshift(newItem);
+            if (id) {
+                const index = this.invoices.findIndex(x => x.id == id);
+                if (index !== -1) this.invoices[index] = { ...this.invoices[index], ...newItem };
+            } else {
+                this.invoices.unshift(newItem);
+            }
         } else if (formType === 'product') {
-            if (id) { const i = this.products.findIndex(x => x.id == id); if (i !== -1) this.products[i] = { ...this.products[i], ...newItem }; }
-            else this.products.push(newItem);
+            if (id) {
+                const index = this.products.findIndex(x => x.id == id);
+                if (index !== -1) this.products[index] = { ...this.products[index], ...newItem };
+            } else {
+                this.products.push(newItem);
+            }
         } else if (formType === 'client') {
-            if (id) { const i = this.clients.findIndex(x => x.id == id); if (i !== -1) this.clients[i] = { ...this.clients[i], ...newItem }; }
-            else this.clients.push(newItem);
+            if (id) {
+                const index = this.clients.findIndex(x => x.id == id);
+                if (index !== -1) this.clients[index] = { ...this.clients[index], ...newItem };
+            } else {
+                this.clients.push(newItem);
+            }
         }
+
         this.saveLocalData();
         this.renderAllViews();
-    },
-
-    handleFirestoreSave: async function (formType, docId, newItem) {
-        const collectionName = formType === 'lead' ? 'leads' :
-            (formType === 'task' ? 'tasks' :
-                (formType === 'invoice' ? 'invoices' :
-                    (formType === 'product' ? 'products' : 'clients')));
-
-        try {
-            await this.db.collection(collectionName).doc(docId).set(newItem, { merge: true });
-            console.log("Saved to Firestore:", collectionName, docId);
-            this.loadFirestoreData(); // Refresh all data
-        } catch (error) {
-            console.error("Firestore Save Error:", error);
-            alert("Failed to save to cloud: " + error.message);
-        }
+        this.closeModal();
     },
 
     // --- QUICK ACTIONS ---
@@ -552,54 +577,28 @@ const crm = {
         document.querySelectorAll('.action-menu').forEach(el => el.classList.remove('show'));
     },
 
-    deleteItem: async function (type, id) {
+    deleteItem: function (type, id) {
         if (!confirm("Delete this item?")) return;
+        if (type === 'lead') this.leads = this.leads.filter(x => x.id != id);
+        if (type === 'task') this.schedule = this.schedule.filter(x => x.id != id);
+        if (type === 'invoice') this.invoices = this.invoices.filter(x => x.id != id);
+        if (type === 'product') this.products = this.products.filter(x => x.id != id);
+        if (type === 'client') this.clients = this.clients.filter(x => x.id != id);
 
-        if (this.isMock) {
-            if (type === 'lead') this.leads = this.leads.filter(x => x.id != id);
-            if (type === 'task') this.schedule = this.schedule.filter(x => x.id != id);
-            if (type === 'invoice') this.invoices = this.invoices.filter(x => x.id != id);
-            if (type === 'product') this.products = this.products.filter(x => x.id != id);
-            if (type === 'client') this.clients = this.clients.filter(x => x.id != id);
-            this.saveLocalData();
-            this.renderAllViews();
-        } else {
-            const collectionName = type === 'lead' ? 'leads' :
-                (type === 'task' ? 'tasks' :
-                    (type === 'invoice' ? 'invoices' :
-                        (type === 'product' ? 'products' : 'clients')));
-            try {
-                await this.db.collection(collectionName).doc(id).delete();
-                console.log("Deleted from Firestore:", id);
-                this.loadFirestoreData();
-            } catch (error) {
-                console.error("Delete Error:", error);
-            }
-        }
+        this.saveLocalData();
+        this.renderAllViews();
     },
 
     archiveItem: function (type, id) {
-        // Implementation for mock/firebase would handle status update differently
-        // Reuse handleMockSave or handleFirestoreSave logic if implementing fully
-        // For simplicity, keeping Mock version here primarily
-        if (this.isMock) {
-            if (type === 'lead') {
-                const item = this.leads.find(x => x.id == id);
-                if (item) item.status = 'Archived';
-            }
-            this.saveLocalData();
-            this.renderAllViews();
-        } else {
-            // Simple status update for Firestore
-            if (type === 'lead') {
-                this.db.collection('leads').doc(id).update({ status: 'Archived' }).then(() => this.loadFirestoreData());
-            }
+        if (type === 'lead') {
+            const item = this.leads.find(x => x.id == id);
+            if (item) item.status = 'Archived';
         }
+        this.saveLocalData();
+        this.renderAllViews();
     },
 
     // --- RENDERERS ---
-    // (Render functions renderLeads, renderSchedule, renderInvoices, renderProducts, renderClients, updateStats)
-    // (These are identical to previous version, as they read from `this.leads` etc which are populated by either Local or Firestore)
 
     renderAllViews: function () {
         this.renderLeads();
@@ -616,18 +615,20 @@ const crm = {
         tbody.innerHTML = '';
         this.leads.forEach(lead => {
             const tr = document.createElement('tr');
-            tr.onclick = () => crm.openModal('lead', lead.id);
+            tr.onclick = () => crm.openModal('lead', lead.id); // Row click
             if (lead.status === 'Archived') tr.classList.add('archived');
+
             let badge = 'badge-new';
             if (lead.status === 'In Progress') badge = 'badge-pending';
             if (lead.status === 'Closed') badge = 'badge-closed';
             if (lead.status === 'Archived') badge = 'badge-archived';
+
             tr.innerHTML = `
                 <td>${lead.date}</td>
                 <td><strong>${lead.name}</strong><br><small>${lead.email || ''}</small></td>
                 <td>${lead.service}</td>
                 <td><span class="badge ${badge}">${lead.status}</span></td>
-                <td class="action-cell" onclick="event.stopPropagation()">
+                <td class="action-cell" onclick="event.stopPropagation()"> <!-- Stop propagation for cell -->
                     <button class="action-trigger" onclick="crm.toggleMenu('${lead.id}', event)">⋮</button>
                     <div id="menu-${lead.id}" class="action-menu">
                         <button onclick="crm.openModal('lead', '${lead.id}')">Edit</button>
@@ -644,21 +645,24 @@ const crm = {
         const container = document.getElementById('schedule-list');
         if (!container) return;
         container.innerHTML = '';
+
         const daysTasks = this.schedule.filter(x => x.date === this.currentViewDate);
         daysTasks.sort((a, b) => a.time.localeCompare(b.time));
+
         if (daysTasks.length === 0) {
             container.innerHTML = `<div style="text-align:center; color:#94a3b8; padding:2rem;">No tasks scheduled for this day.</div>`;
             return;
         }
+
         daysTasks.forEach(item => {
             const div = document.createElement('div');
             div.className = 'schedule-item';
-            div.onclick = () => crm.openModal('task', item.id);
+            div.onclick = () => crm.openModal('task', item.id); // Item click
             div.innerHTML = `
                 <div class="time-slot">${item.time}</div>
                 <div class="task-details">
                     <h4>${item.title}</h4>
-                    <p>Client: ${item.client || 'Unknown'} • Location: ${item.address || 'N/A'}</p>
+                    <p>Client: ${item.client} • Location: ${item.address}</p>
                 </div>
                 <div style="margin-left: auto; position: relative;" class="action-cell" onclick="event.stopPropagation()">
                      <button class="action-trigger" onclick="crm.toggleMenu('${item.id}', event)">⋮</button>
@@ -678,7 +682,7 @@ const crm = {
         tbody.innerHTML = '';
         this.invoices.forEach(inv => {
             const tr = document.createElement('tr');
-            tr.onclick = () => crm.openModal('invoice', inv.id);
+            tr.onclick = () => crm.openModal('invoice', inv.id); // Row click
             let badge = inv.status === 'Paid' ? 'badge-paid' : (inv.status === 'Sent' ? 'badge-sent' : 'badge-closed');
             tr.innerHTML = `
                 <td>${inv.id}</td>
@@ -704,7 +708,7 @@ const crm = {
         tbody.innerHTML = '';
         this.products.forEach(prod => {
             const tr = document.createElement('tr');
-            tr.onclick = () => crm.openModal('product', prod.id);
+            tr.onclick = () => crm.openModal('product', prod.id); // Row click
             tr.innerHTML = `
                 <td>${prod.name}</td>
                 <td>${prod.category}</td>
@@ -727,7 +731,7 @@ const crm = {
         tbody.innerHTML = '';
         this.clients.forEach(c => {
             const tr = document.createElement('tr');
-            tr.onclick = () => crm.openModal('client', c.id);
+            tr.onclick = () => crm.openModal('client', c.id); // Row click
             tr.innerHTML = `
                 <td>${c.name}</td>
                 <td>${c.email}</td>
