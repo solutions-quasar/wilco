@@ -134,9 +134,74 @@ const crm = {
         localStorage.setItem('wilco_clients', JSON.stringify(this.clients));
     },
 
-    startFirebaseMode: function () {
-        console.log("Firebase mode init (placeholder)");
-        this.showLogin();
+    loadFirestoreData: async function () {
+        if (!this.db) return;
+
+        try {
+            const leadsSnap = await this.db.collection('leads').get();
+            const tasksSnap = await this.db.collection('tasks').get();
+            const invoicesSnap = await this.db.collection('invoices').get();
+            const productsSnap = await this.db.collection('products').get();
+            const clientsSnap = await this.db.collection('clients').get();
+
+            // Check if DB is completely fresh/empty
+            if (leadsSnap.empty && tasksSnap.empty && invoicesSnap.empty && productsSnap.empty && clientsSnap.empty) {
+                console.log("Database empty. Seeding defaults...");
+                await this.seedFirestoreData();
+                return; // seed function will reload data
+            }
+
+            this.leads = leadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.schedule = tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.invoices = invoicesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.clients = clientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            this.renderAllViews();
+            console.log("Firestore Data Loaded");
+        } catch (error) {
+            console.error("Error loading Firestore data:", error);
+            // alert("Error loading data. Check console."); 
+        }
+    },
+
+    seedFirestoreData: async function () {
+        const today = new Date().toISOString().split('T')[0];
+        const batch = this.db.batch();
+
+        const defaultLeads = [
+            { id: 'lead_1', name: 'John Doe', email: 'john@example.com', service: 'Emergency Repair', status: 'New', date: today }
+        ];
+        const defaultTasks = [
+            { id: 'task_1', date: today, time: '09:00', title: 'Install Water Heater', address: '123 Maple St', client: 'Sarah Smith' }
+        ];
+        const defaultInvoices = [
+            { id: 'INV-1001', client: 'Sarah Smith', clientId: 'client_2', date: today, amount: '450.00', status: 'Paid', items: [] }
+        ];
+        const defaultProducts = [
+            { id: 'prod_1', name: 'Service Call', category: 'Service', price: '99.00' },
+            { id: 'prod_2', name: 'Water Heater Install', category: 'Labor', price: '450.00' },
+            { id: 'prod_3', name: 'Copper Pipe (10ft)', category: 'Materials', price: '25.50' }
+        ];
+        const defaultClients = [
+            { id: 'client_1', name: 'John Doe', email: 'john@example.com', phone: '555-0101', address: '456 Oak Ave' },
+            { id: 'client_2', name: 'Sarah Smith', email: 'sarah@test.com', phone: '555-0102', address: '123 Maple St' }
+        ];
+
+        // Add to batch
+        defaultLeads.forEach(item => batch.set(this.db.collection('leads').doc(item.id), item));
+        defaultTasks.forEach(item => batch.set(this.db.collection('tasks').doc(item.id), item));
+        defaultInvoices.forEach(item => batch.set(this.db.collection('invoices').doc(item.id), item));
+        defaultProducts.forEach(item => batch.set(this.db.collection('products').doc(item.id), item));
+        defaultClients.forEach(item => batch.set(this.db.collection('clients').doc(item.id), item));
+
+        try {
+            await batch.commit();
+            console.log("Database Seeded Successfully.");
+            this.loadFirestoreData(); // Reload to render
+        } catch (error) {
+            console.error("Error Seeding DB:", error);
+        }
     },
 
     setupEventListeners: function () {
