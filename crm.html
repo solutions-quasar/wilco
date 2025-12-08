@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wilco Plumbing CRM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="crm.css">
+</head>
+
+<body>
+
+    <!-- Mock Mode Banner -->
+    <div id="mock-banner" class="mock-banner" style="display: none;">
+        DEMO MODE - Using Simulated Data (Not Connected to Database)
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen">
+        <div class="login-card">
+            <h2>Wilco CRM Login</h2>
+            <form id="login-form">
+                <div class="input-group">
+                    <label>Email Address</label>
+                    <input type="email" id="email" placeholder="admin@wilcoplumbing.com">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-crm">Login to Dashboard</button>
+            </form>
+            <p style="margin-top: 1rem; font-size: 0.8rem; color: #94a3b8;">
+                (Mock Mode: Just click Login!)
+            </p>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboard-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <h1>Wilco <span style="color: var(--accent);">CRM</span></h1>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" onclick="crm.switchView('dashboard')">
+                    Leads Dashboard
+                </button>
+                <button class="nav-item" onclick="crm.switchView('daily')">
+                    Daily Workday
+                </button>
+                <button class="nav-item" onclick="crm.switchView('invoices')">
+                    Invoices & Quotes
+                </button>
+                <button class="nav-item" onclick="crm.switchView('products')">
+                    Products & Services
+                </button>
+                <button class="nav-item" onclick="crm.switchView('clients')">
+                    Clients
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <span id="user-email">admin@wilco.com</span>
+                </div>
+                <button id="logout-btn" class="btn-logout">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="content-area">
+
+            <!-- VIEW: Leads Dashboard -->
+            <div id="view-dashboard" class="view-section active">
+                <header class="view-header">
+                    <h2>Leads Overview</h2>
+                    <div class="header-actions">
+                        <button class="btn-crm small" onclick="crm.openModal('lead')">+ New Lead</button>
+                    </div>
+                </header>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>New Leads</h3>
+                        <div class="value" id="stats-new">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Active Jobs</h3>
+                        <div class="value" id="stats-active">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Est. Revenue (Paid)</h3>
+                        <div class="value" id="stats-revenue">$0</div>
+                    </div>
+                </div>
+
+                <div class="data-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Service Type</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leads-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: Daily Workday -->
+            <div id="view-daily" class="view-section">
+                <header class="view-header">
+                    <div class="date-controls">
+                        <button class="btn-nav" onclick="crm.changeDate(-1)">←</button>
+                        <input type="date" id="workday-date" onchange="crm.setDate(this)">
+                        <button class="btn-nav" onclick="crm.changeDate(1)">→</button>
+                    </div>
+                    <h2 id="current-date-display">Today</h2>
+                    <button class="btn-crm small" onclick="crm.openModal('task')">+ Add Task</button>
+                </header>
+
+                <div class="schedule-container" id="schedule-list">
+                    <!-- Schedule items injected via JS -->
+                </div>
+            </div>
+
+            <!-- VIEW: Invoices -->
+            <div id="view-invoices" class="view-section">
+                <header class="view-header">
+                    <h2>Invoices & Quotes</h2>
+                    <button class="btn-crm small" onclick="crm.openModal('invoice')">+ Create Invoice</button>
+                </header>
+
+                <div class="data-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Client</th>
+                                <th>Date Issued</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoices-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: Products -->
+            <div id="view-products" class="view-section">
+                <header class="view-header">
+                    <h2>Products & Services</h2>
+                    <button class="btn-crm small" onclick="crm.openModal('product')">+ New Product</button>
+                </header>
+
+                <div class="data-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: Clients -->
+            <div id="view-clients" class="view-section">
+                <header class="view-header">
+                    <h2>Clients</h2>
+                    <button class="btn-crm small" onclick="crm.openModal('client')">+ New Client</button>
+                </header>
+
+                <div class="data-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clients-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Generic Modal Overlay -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-card">
+            <header class="modal-header">
+                <h3 id="modal-title">Create Item</h3>
+                <button class="close-btn" onclick="crm.closeModal()">×</button>
+            </header>
+            <form id="modal-form">
+                <input type="hidden" id="modal-id"> <!-- Stores ID for edits -->
+                <input type="hidden" id="modal-type"> <!-- Stores Type (lead, task, invoice) -->
+
+                <div id="modal-fields">
+                    <!-- Dynamic fields injected here based on type -->
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="crm.closeModal()">Cancel</button>
+                    <button type="submit" class="btn-crm">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase_config.js"></script>
+    <script src="crm.js"></script>
+</body>
+
+</html>
