@@ -67,7 +67,12 @@
                 <div class="user-info">
                     <span id="user-email">admin@wilco.com</span>
                 </div>
-                <button id="logout-btn" class="btn-logout">Logout</button>
+                <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%;">
+                    <button id="logout-btn" class="btn-logout">Logout</button>
+                    <button onclick="crm.forceSeed()"
+                        style="background:none; border:none; color:var(--text-muted); font-size:0.7rem; cursor:pointer; text-align:left; padding:0;">Initialize
+                        DB</button>
+                </div>
             </div>
         </aside>
 
