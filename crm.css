@@ -533,6 +533,12 @@ tr.archived {
     display: flex;
     align-items: center;
     gap: 1.5rem;
+    cursor: pointer;
+    transition: background-color 0.1s;
+}
+
+.schedule-item:hover {
+    background-color: var(--secondary);
 }
 
 .time-slot {

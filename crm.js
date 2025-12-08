@@ -500,7 +500,8 @@ const crm = {
     },
 
     // --- QUICK ACTIONS ---
-    toggleMenu: function (id) {
+    toggleMenu: function (id, event) {
+        if (event) event.stopPropagation();
         const menu = document.getElementById(`menu-${id}`);
         const isVisible = menu.classList.contains('show');
         this.closeAllMenus();
@@ -549,6 +550,7 @@ const crm = {
         tbody.innerHTML = '';
         this.leads.forEach(lead => {
             const tr = document.createElement('tr');
+            tr.onclick = () => crm.openModal('lead', lead.id); // Row click
             if (lead.status === 'Archived') tr.classList.add('archived');
 
             let badge = 'badge-new';
@@ -561,8 +563,8 @@ const crm = {
                 <td><strong>${lead.name}</strong><br><small>${lead.email || ''}</small></td>
                 <td>${lead.service}</td>
                 <td><span class="badge ${badge}">${lead.status}</span></td>
-                <td class="action-cell">
-                    <button class="action-trigger" onclick="crm.toggleMenu('${lead.id}')">⋮</button>
+                <td class="action-cell" onclick="event.stopPropagation()"> <!-- Stop propagation for cell -->
+                    <button class="action-trigger" onclick="crm.toggleMenu('${lead.id}', event)">⋮</button>
                     <div id="menu-${lead.id}" class="action-menu">
                         <button onclick="crm.openModal('lead', '${lead.id}')">Edit</button>
                         <button onclick="crm.archiveItem('lead', '${lead.id}')">Archive</button>
@@ -590,14 +592,15 @@ const crm = {
         daysTasks.forEach(item => {
             const div = document.createElement('div');
             div.className = 'schedule-item';
+            div.onclick = () => crm.openModal('task', item.id); // Item click
             div.innerHTML = `
                 <div class="time-slot">${item.time}</div>
                 <div class="task-details">
                     <h4>${item.title}</h4>
                     <p>Client: ${item.client} • Location: ${item.address}</p>
                 </div>
-                <div style="margin-left: auto; position: relative;" class="action-cell">
-                     <button class="action-trigger" onclick="crm.toggleMenu('${item.id}')">⋮</button>
+                <div style="margin-left: auto; position: relative;" class="action-cell" onclick="event.stopPropagation()">
+                     <button class="action-trigger" onclick="crm.toggleMenu('${item.id}', event)">⋮</button>
                      <div id="menu-${item.id}" class="action-menu">
                         <button onclick="crm.openModal('task', '${item.id}')">Edit</button>
                         <button class="danger" onclick="crm.deleteItem('task', '${item.id}')">Delete</button>
@@ -614,6 +617,7 @@ const crm = {
         tbody.innerHTML = '';
         this.invoices.forEach(inv => {
             const tr = document.createElement('tr');
+            tr.onclick = () => crm.openModal('invoice', inv.id); // Row click
             let badge = inv.status === 'Paid' ? 'badge-paid' : (inv.status === 'Sent' ? 'badge-sent' : 'badge-closed');
             tr.innerHTML = `
                 <td>${inv.id}</td>
@@ -621,8 +625,8 @@ const crm = {
                 <td>${inv.date}</td>
                 <td><strong>$${inv.amount}</strong></td>
                 <td><span class="badge ${badge}">${inv.status}</span></td>
-                <td class="action-cell">
-                    <button class="action-trigger" onclick="crm.toggleMenu('${inv.id}')">⋮</button>
+                <td class="action-cell" onclick="event.stopPropagation()">
+                    <button class="action-trigger" onclick="crm.toggleMenu('${inv.id}', event)">⋮</button>
                     <div id="menu-${inv.id}" class="action-menu">
                         <button onclick="crm.openModal('invoice', '${inv.id}')">Edit</button>
                         <button class="danger" onclick="crm.deleteItem('invoice', '${inv.id}')">Delete</button>
@@ -639,12 +643,13 @@ const crm = {
         tbody.innerHTML = '';
         this.products.forEach(prod => {
             const tr = document.createElement('tr');
+            tr.onclick = () => crm.openModal('product', prod.id); // Row click
             tr.innerHTML = `
                 <td>${prod.name}</td>
                 <td>${prod.category}</td>
                 <td>$${prod.price}</td>
-                <td class="action-cell">
-                    <button class="action-trigger" onclick="crm.toggleMenu('${prod.id}')">⋮</button>
+                <td class="action-cell" onclick="event.stopPropagation()">
+                    <button class="action-trigger" onclick="crm.toggleMenu('${prod.id}', event)">⋮</button>
                     <div id="menu-${prod.id}" class="action-menu">
                         <button onclick="crm.openModal('product', '${prod.id}')">Edit</button>
                         <button class="danger" onclick="crm.deleteItem('product', '${prod.id}')">Delete</button>
@@ -661,12 +666,13 @@ const crm = {
         tbody.innerHTML = '';
         this.clients.forEach(c => {
             const tr = document.createElement('tr');
+            tr.onclick = () => crm.openModal('client', c.id); // Row click
             tr.innerHTML = `
                 <td>${c.name}</td>
                 <td>${c.email}</td>
                 <td>${c.phone}</td>
-                <td class="action-cell">
-                    <button class="action-trigger" onclick="crm.toggleMenu('${c.id}')">⋮</button>
+                <td class="action-cell" onclick="event.stopPropagation()">
+                    <button class="action-trigger" onclick="crm.toggleMenu('${c.id}', event)">⋮</button>
                     <div id="menu-${c.id}" class="action-menu">
                         <button onclick="crm.openModal('client', '${c.id}')">Edit</button>
                         <button class="danger" onclick="crm.deleteItem('client', '${c.id}')">Delete</button>
