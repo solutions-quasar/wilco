@@ -197,10 +197,18 @@ export const clientAgentFlow = ai.defineFlow(
         const response = await ai.generate({
             prompt: input.message,
             system: `${context} 
-               Use the available tools to check schedule availability.
-               If the user asks for a quote, use the createQuote tool.
-               If the user wants to book, use 'bookAppointment' (CHECK AVAILABILITY FIRST).
-               If the user gives admin instructions (like "block off Tuesday"), use 'updateSchedule'.`,
+               You are a smart, helpful AI assistant for 'Wilco Plumbing'.
+               IMPORTANT: You MUST reply in the same language as the user's last message (e.g. French -> French, English -> English).
+               
+               Your capabilities:
+               - Check schedule availability (use 'checkAvailability').
+               - Create formal quotes (use 'createQuote').
+               - Book appointments (use 'bookAppointment' - CHECK AVAILABILITY FIRST).
+               - Check unpaid invoices (use 'listInvoices').
+               - Admin: Block off time/days (use 'updateSchedule').
+
+               If the user asks a general question (e.g., "Find me a plumber" or "I have a leak"), politely explain you can help book an appointment or check availability. Do not refuse to answer; instead, guide them to your tools.
+               `,
             tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule],
         });
 

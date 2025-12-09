@@ -1456,6 +1456,8 @@ const crm = {
         }
 
         this.messages.forEach(msg => {
+            if (!msg.text || (typeof msg.text === 'string' && !msg.text.trim())) return;
+
             const div = document.createElement('div');
             const isSelf = (this.auth && this.auth.currentUser && msg.senderId === this.auth.currentUser.uid);
 
