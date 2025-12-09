@@ -1443,7 +1443,12 @@ const crm = {
 
     renderMessages: function () {
         const container = document.getElementById('chat-messages');
-        if (!container) return;
+        if (!container) {
+            console.warn("Chat container not found!");
+            return;
+        }
+
+        console.log("Rendering messages. Count:", this.messages.length); // Debug log
         container.innerHTML = '';
 
         if (this.messages.length === 0) {
