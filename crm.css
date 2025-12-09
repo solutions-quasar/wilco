@@ -467,34 +467,6 @@ tr.archived {
 }
 
 .badge-archived {
-    background: var(--secondary);
-    color: var(--text-muted);
-}
-
-/* Actions & Menus */
-.action-cell {
-    position: relative;
-}
-
-.action-trigger {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    font-size: 1.5rem;
-    line-height: 1rem;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 4px;
-}
-
-.action-trigger:hover {
-    background: var(--secondary);
-    color: var(--text-main);
-}
-
-.action-menu {
-    position: absolute;
-    right: 0;
     top: 100%;
     background: var(--bg-card);
     border: 1px solid var(--border);
