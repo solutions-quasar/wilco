@@ -173,6 +173,45 @@ const updateSchedule = ai.defineTool(
     }
 );
 
+const searchKnowledgeBase = ai.defineTool(
+    {
+        name: "searchKnowledgeBase",
+        description: "Searches the internal knowledge base for answers to questions about warranties, procedures, or general 'how-to' info.",
+        inputSchema: z.object({
+            query: z.string().describe("The search keywords or question."),
+        }),
+        outputSchema: z.object({
+            results: z.array(z.object({ title: z.string(), content: z.string() })),
+            found: z.boolean(),
+        }),
+    },
+    async ({ query }) => {
+        // "Lite" RAG: Fetch all and filter in-memory (good for <100 docs)
+        const snapshot = await db.collection("knowledge").get();
+        const allDocs = snapshot.docs.map(doc => doc.data());
+
+        const keywords = query.toLowerCase().split(' ').filter(k => k.length > 3);
+
+        const scored = allDocs.map(doc => {
+            let score = 0;
+            const text = (doc.title + " " + doc.content).toLowerCase();
+            if (text.includes(query.toLowerCase())) score += 10; // Exact phrase
+            keywords.forEach(k => {
+                if (text.includes(k)) score += 1;
+            });
+            return { doc, score };
+        });
+
+        const top = scored
+            .filter(x => x.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 3)
+            .map(x => ({ title: x.doc.title, content: x.doc.content }));
+
+        return { results: top, found: top.length > 0 };
+    }
+);
+
 // --- DEFINE FLOW ---
 
 // 1. Define the Genkit Flow logic
@@ -206,10 +245,11 @@ export const clientAgentFlow = ai.defineFlow(
                - Book appointments (use 'bookAppointment' - CHECK AVAILABILITY FIRST).
                - Check unpaid invoices (use 'listInvoices').
                - Admin: Block off time/days (use 'updateSchedule').
+               - Knowledge Base: Answer general questions about warranties, services, or procedures by searching the database (use 'searchKnowledgeBase').
 
                If the user asks a general question (e.g., "Find me a plumber" or "I have a leak"), politely explain you can help book an appointment or check availability. Do not refuse to answer; instead, guide them to your tools.
                `,
-            tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule],
+            tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule, searchKnowledgeBase],
         });
 
         return { text: response.text };

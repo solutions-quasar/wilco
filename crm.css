@@ -253,8 +253,7 @@ textarea {
     /* Hidden by default */
     /* Sidebar layout handled by JS toggle or generic flex when active */
     min-height: 100vh;
-    padding-top: 30px;
-    /* Space for banner */
+    padding-top: 0;
 }
 
 /* Sidebar */
@@ -265,14 +264,16 @@ textarea {
     display: flex;
     flex-direction: column;
     position: fixed;
-    height: calc(100vh - 30px);
-    top: 30px;
-    /* Below banner */
+    height: 100vh;
+    top: 0;
     left: 0;
+    z-index: 100;
 }
 
 .sidebar-brand {
     padding: 2rem;
+    padding-top: 3rem;
+    /* Added margin */
     border-bottom: 1px solid var(--border);
 }
 
@@ -481,7 +482,9 @@ td {
 }
 
 tbody tr:hover {
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--secondary);
+    /* Light grey highlight */
+    cursor: pointer;
 }
 
 th {

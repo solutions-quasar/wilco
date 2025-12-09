@@ -8,7 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link rel="stylesheet" href="crm.css">
+    <link rel="stylesheet" href="calendar.css">
+    <link rel="stylesheet" href="ai_chat.css">
 
     <!-- Favicon & Social -->
     <link rel="icon" type="image/x-icon" href="assets/favicon.png">
@@ -118,50 +121,67 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>WILCO<span style="color:var(--text-main);">CRM</span></h2>
-                <button id="theme-toggle" class="btn-icon" onclick="crm.toggleTheme()" title="Toggle Theme">
-                    <!-- Icon injected by JS -->
-                    🌙
-                </button>
+                <div style="text-align: center;">
+                    <h2 style="font-size: 1.5rem; letter-spacing: -0.5px;">WILCO<span
+                            style="color:var(--text-main);">CRM</span></h2>
+                    <span
+                        style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); display: block; margin-top: 4px;">Powered
+                        by AI ✨</span>
+                </div>
             </div>
 
             <nav class="sidebar-nav">
                 <button class="nav-btn active" onclick="crm.switchView('dashboard')">
-                    <span class="nav-icon">📊</span> Leads Dashboard
+                    <i class='bx bxs-dashboard nav-icon'></i> Dashboard
                 </button>
                 <button class="nav-btn" onclick="crm.switchView('daily')">
-                    <span class="nav-icon">📅</span> Daily Workday
+                    <i class='bx bx-calendar nav-icon'></i> Calendar
                 </button>
                 <button class="nav-btn" onclick="crm.switchView('invoices')">
-                    <span class="nav-icon">📄</span> Invoices & Quotes
+                    <i class='bx bx-file nav-icon'></i> Invoices & Quotes
                 </button>
                 <button class="nav-btn" onclick="crm.switchView('products')">
-                    <span class="nav-icon">📦</span> Products & Services
+                    <i class='bx bx-box nav-icon'></i> Products & Services
                 </button>
                 <button class="nav-btn" onclick="crm.switchView('clients')">
-                    <span class="nav-icon">👥</span> Clients
+                    <i class='bx bx-user nav-icon'></i> Clients
                 </button>
                 <button class="nav-btn" onclick="crm.switchView('team')">
-                    <span class="nav-icon">👷</span> Team
+                    <i class='bx bx-hard-hat nav-icon'></i> Team
                 </button>
-                <button class="nav-btn" onclick="crm.switchView('messages')">
-                    <span class="nav-icon">💬</span> Messages
+
+
+                <div style="flex: 1;"></div> <!-- Spacer -->
+
+                <button class="nav-btn" onclick="crm.switchView('account')">
+                    <i class='bx bx-slider-alt nav-icon'></i> My Account
                 </button>
             </nav>
 
             <div class="sidebar-footer">
-                <div class="user-info">
-                    <div class="avatar">LW</div>
-                    <div class="user-details">
-                        <span id="user-name">Lukas Wilson</span>
-                        <span id="user-email">admin@wilco.com</span>
+                <div style="display: flex; justify-content: center; margin-bottom: 1rem;">
+                    <button id="theme-toggle" class="btn-icon" onclick="crm.toggleTheme()" title="Toggle Theme"
+                        style="background: var(--bg-main); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class='bx bx-moon'></i>
+                    </button>
+                </div>
+                <div class="user-info" style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="avatar" style="width: 32px; height: 32px; font-size: 0.8rem;">LW</div>
+                    <div class="user-details" style="overflow: hidden;">
+                        <span id="user-name" style="display: block; font-weight: 600;">Lukas Wilson</span>
+                        <span id="user-email"
+                            style="display: block; opacity: 0.7; font-size: 0.7rem;">admin@wilco.com</span>
                     </div>
                 </div>
-                <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%;">
-                    <button id="logout-btn" class="btn-logout">Logout</button>
-                    <button onclick="crm.forceSeed()"
-                        style="background:none; border:none; color:var(--text-muted); font-size:0.7rem; cursor:pointer; text-align:left; padding:0;">Initialize
-                        DB</button>
+                <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; margin-top: 0.75rem;">
+                    <button id="logout-btn" class="btn-logout" style="font-size: 0.8rem; padding: 0.4rem;"><i
+                            class='bx bx-log-out'></i> Logout</button>
+                    <!-- Seed Button hidden but accessible -->
+                    <div style="text-align: center; margin-top: 0.5rem; opacity: 0.5;">
+                        <a href="https://solutionsquasar.ca" target="_blank"
+                            style="font-size: 8px; color: var(--text-main); text-decoration: none;">Built by Solutions
+                            Quasar Inc.</a>
+                    </div>
                 </div>
             </div>
         </aside>
@@ -243,20 +263,39 @@
                 </div>
             </div>
 
-            <!-- VIEW: Daily Workday -->
+            <!-- VIEW: Calendar -->
             <div id="view-daily" class="view-section">
                 <header class="view-header">
-                    <div class="date-controls">
-                        <button class="btn-nav" onclick="crm.changeDate(-1)">←</button>
-                        <input type="date" id="workday-date" onchange="crm.setDate(this)">
-                        <button class="btn-nav" onclick="crm.changeDate(1)">→</button>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <h2 id="calendar-title" style="margin: 0; min-width: 200px;">September 2025</h2>
+                        <div class="date-controls">
+                            <button class="btn-nav" onclick="crm.changeMonth(-1)"><i
+                                    class='bx bx-chevron-left'></i></button>
+                            <button class="btn-nav" onclick="crm.changeMonth(1)"><i
+                                    class='bx bx-chevron-right'></i></button>
+                            <button class="btn-secondary small" onclick="crm.goToToday()">Today</button>
+                        </div>
                     </div>
-                    <h2 id="current-date-display">Today</h2>
-                    <button class="btn-crm small" onclick="crm.openModal('task')">+ Add Task</button>
+                    <div class="header-actions">
+                        <button class="btn-crm small" onclick="crm.openModal('task')">+ New Event</button>
+                        <button class="btn-secondary small" onclick="crm.openModal('blocker')">Block Time</button>
+                    </div>
                 </header>
 
-                <div class="schedule-container" id="schedule-list">
-                    <!-- Schedule items injected via JS -->
+                <!-- Calendar Grid -->
+                <div class="calendar-wrapper">
+                    <div class="calendar-days-header">
+                        <div>Sun</div>
+                        <div>Mon</div>
+                        <div>Tue</div>
+                        <div>Wed</div>
+                        <div>Thu</div>
+                        <div>Fri</div>
+                        <div>Sat</div>
+                    </div>
+                    <div id="calendar-grid" class="calendar-grid">
+                        <!-- JS Injected Days -->
+                    </div>
                 </div>
             </div>
 
@@ -365,26 +404,55 @@
                 </div>
             </div>
 
-            <!-- VIEW: Messages -->
-            <div id="view-messages" class="view-section" style="height: calc(100vh - 100px);">
-                <header class="view-header" style="margin-bottom: 1rem;">
-                    <h2>Team Chat</h2>
+            <!-- VIEW: My Account -->
+            <div id="view-account" class="view-section">
+                <header class="view-header">
+                    <h2>My Account</h2>
                 </header>
 
-                <div class="chat-container">
-                    <div id="chat-messages" class="chat-messages">
-                        <!-- Messages Injected Here -->
-                        <div class="message system">
-                            <p>Welcome to the Team Chat!</p>
+                <div class="dashboard-grid">
+                    <!-- Profile Card -->
+                    <div class="stats-card">
+                        <h3>Profile</h3>
+                        <div style="display:flex; align-items:center; gap:1rem; margin-top:1rem;">
+                            <div
+                                style="width:60px; height:60px; background:var(--accent); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                                LW</div>
+                            <div>
+                                <h4 style="margin:0;">Lukas Wilson</h4>
+                                <p style="margin:0; opacity:0.7;">Owner & Admin</p>
+                            </div>
                         </div>
                     </div>
-                    <form id="chat-form" class="chat-input-area">
-                        <input type="text" id="message-input" placeholder="Type a message..." required
-                            autocomplete="off">
-                        <button type="submit" class="btn-crm">Send</button>
-                    </form>
+
+                    <!-- Knowledge Base Card -->
+                    <div class="stats-card" style="grid-column: span 2;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3>Knowledge Base (AI Brain) 🧠</h3>
+                            <button class="btn-crm small" onclick="crm.openModal('knowledge')">+ Add Article</button>
+                        </div>
+                        <p style="font-size:0.9rem; opacity:0.7; margin:0.5rem 0;">Add manuals, warranties, and
+                            procedures here. The AI will search this to answer questions.</p>
+
+                        <div class="data-table-container" style="max-height: 300px; overflow-y: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Content Snippet</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="knowledge-table-body">
+                                    <!-- Knowledge Injected Here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+
 
         </main>
     </div>
@@ -418,6 +486,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"
         crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"
         crossorigin="anonymous"></script>
     <script src="firebase_config.js"></script>

@@ -646,8 +646,13 @@ const crm = {
             if (type === 'invoice') data = this.invoices.find(x => x.id == id);
             if (type === 'product') data = this.products.find(x => x.id == id);
             if (type === 'client') data = this.clients.find(x => x.id == id);
+            if (type === 'knowledge') data = this.knowledge.find(x => x.id == id);
             if (type === 'team') data = this.team.find(x => x.id == id);
         }
+
+        // Initialize Media State
+        this.currentMedia = (data && data.media) ? [...data.media] : [];
+        setTimeout(() => this.renderMediaPreviews(), 50);
 
         if (type === 'lead') {
             title.innerText = id ? 'Edit Lead' : 'New Lead';
@@ -677,6 +682,11 @@ const crm = {
                         <option value="Closed" ${data && data.status == 'Closed' ? 'selected' : ''}>Closed</option>
                         <option value="Archived" ${data && data.status == 'Archived' ? 'selected' : ''}>Archived</option>
                     </select>
+                </div>
+                <div class="input-group">
+                    <label>Media / Files</label>
+                    <input type="file" multiple onchange="crm.handleFileUpload(event)" accept="image/*,application/pdf">
+                    <div id="media-previews" style="margin-top:10px; display:flex; flex-wrap:wrap;"></div>
                 </div>
             `;
         }
@@ -729,6 +739,11 @@ const crm = {
                     <label>Price ($)</label>
                     <input type="number" name="price" step="0.01" value="${data ? data.price : ''}" required placeholder="0.00">
                 </div>
+                <div class="input-group">
+                    <label>Media / Files</label>
+                    <input type="file" multiple onchange="crm.handleFileUpload(event)" accept="image/*,application/pdf">
+                    <div id="media-previews" style="margin-top:10px; display:flex; flex-wrap:wrap;"></div>
+                </div>
             `;
         }
 
@@ -750,6 +765,22 @@ const crm = {
                 <div class="input-group">
                     <label>Address</label>
                     <input type="text" name="address" value="${data ? data.address : ''}">
+                </div>
+            `;
+        }
+
+
+
+        if (type === 'knowledge') {
+            title.innerText = id ? 'Edit Article' : 'New Knowledge Article';
+            container.innerHTML = `
+                <div class="input-group">
+                    <label>Title</label>
+                    <input type="text" name="title" value="${data ? data.title : ''}" required placeholder="e.g. Warranty Policy">
+                </div>
+                <div class="input-group">
+                    <label>Content</label>
+                    <textarea name="content" rows="6" required placeholder="Enter the details...">${data ? data.content : ''}</textarea>
                 </div>
             `;
         }
@@ -777,6 +808,27 @@ const crm = {
                 <div class="input-group">
                     <label>Phone</label>
                     <input type="text" name="phone" value="${data ? data.phone : ''}">
+                </div>
+            `;
+        }
+
+        if (type === 'blocker') {
+            title.innerText = 'Block Time / Holiday';
+            container.innerHTML = `
+                <div class="input-group">
+                    <label>Title</label>
+                    <input type="text" name="title" placeholder="St. Patrick's Day / Off" required>
+                </div>
+                <div class="input-group">
+                    <label>Date</label>
+                    <input type="date" name="date" required value="${this.currentCalendarDate.toISOString().split('T')[0]}">
+                </div>
+                 <div class="input-group">
+                    <label>Type</label>
+                    <select name="type">
+                        <option value="blocker">Unavailable</option>
+                        <option value="holiday">Holiday</option>
+                    </select>
                 </div>
             `;
         }
@@ -910,6 +962,9 @@ const crm = {
             }
         }
 
+        // Save Media
+        newItem.media = this.currentMedia;
+
         // Handle Invoice Specifics (Line Items)
         if (formType === 'invoice') {
             const items = [];
@@ -951,6 +1006,9 @@ const crm = {
         } else if (formType === 'team') {
             collectionName = 'team';
             this.updateLocalArray('team', newItem);
+        } else if (formType === 'knowledge') {
+            collectionName = 'knowledge';
+            this.updateLocalArray('knowledge', newItem);
         }
 
         console.log(`Attempting to save [${formType}] to Firestore. ID: ${newItem.id}`, newItem);
@@ -1000,7 +1058,11 @@ const crm = {
         document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
         // Show selected view
         const target = document.getElementById(`view-${viewId}`);
-        if (target) target.classList.add('active');
+        if (target) {
+            target.classList.add('active');
+            // Save state
+            localStorage.setItem('wilco_active_view', viewId);
+        }
 
         // Update active menu state
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
@@ -1027,6 +1089,14 @@ const crm = {
         document.getElementById('dashboard-wrapper').style.display = 'flex';
         document.querySelector('.content-area').style.display = 'block';
         if (email) document.getElementById('user-email').innerText = email;
+
+        // Restore View
+        const savedView = localStorage.getItem('wilco_active_view');
+        if (savedView) {
+            this.switchView(savedView);
+        } else {
+            this.switchView('dashboard'); // Default
+        }
     },
 
     showLogin: function () {
@@ -1067,6 +1137,7 @@ const crm = {
         if (type === 'product') this.products = this.products.filter(x => x.id != id);
         if (type === 'client') this.clients = this.clients.filter(x => x.id != id);
         if (type === 'team') this.team = this.team.filter(x => x.id != id);
+        if (type === 'knowledge') this.knowledge = this.knowledge.filter(x => x.id != id);
 
         this.saveLocalData();
         this.renderAllViews();
@@ -1097,12 +1168,117 @@ const crm = {
     renderAllViews: function () {
         this.renderLeads();
         this.renderDashboard(); // Updated from updateStats
-        this.renderSchedule();
+        this.renderCalendar(); // Updated from renderSchedule
         this.renderInvoices();
         this.renderProducts();
         this.renderClients();
         this.renderTeam();
-        this.renderMessages(); // Add this line
+        this.renderKnowledge();
+        // Chat is now floating, rendered on toggle or update
+    },
+
+    // --- CALENDAR LOGIC ---
+    currentCalendarDate: new Date(),
+
+    changeMonth: function (offset) {
+        this.currentCalendarDate.setMonth(this.currentCalendarDate.getMonth() + offset);
+        this.renderCalendar();
+    },
+
+    goToToday: function () {
+        this.currentCalendarDate = new Date();
+        this.renderCalendar();
+    },
+
+    renderCalendar: function () {
+        const grid = document.getElementById('calendar-grid');
+        const title = document.getElementById('calendar-title');
+        if (!grid || !title) return;
+
+        grid.innerHTML = '';
+        const year = this.currentCalendarDate.getFullYear();
+        const month = this.currentCalendarDate.getMonth();
+
+        // Update Title
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        title.innerText = `${monthNames[month]} ${year}`;
+
+        // Date Math
+        const firstDayOfMonth = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+        const todayCheck = new Date();
+        const isCurrentMonth = todayCheck.getMonth() === month && todayCheck.getFullYear() === year;
+
+        // Previous Month Padding
+        for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'calendar-day other-month';
+            dayDiv.innerHTML = `<div class="day-number">${daysInPrevMonth - i}</div>`;
+            grid.appendChild(dayDiv);
+        }
+
+        // Current Month Days
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'calendar-day';
+            if (isCurrentMonth && day === todayCheck.getDate()) dayDiv.classList.add('today');
+
+            dayDiv.onclick = () => {
+                // Open modal with pre-filled date
+                crm.openModal('task');
+                setTimeout(() => {
+                    const dateInput = document.querySelector('input[name="date"]');
+                    if (dateInput) dateInput.value = dateStr;
+                }, 100);
+            };
+
+            let html = `<div class="day-number">${day}</div>`;
+
+            // Find Events
+            const dayEvents = this.schedule.filter(s => s.date === dateStr);
+            // Also check leads with dates
+            const leadEvents = this.leads.filter(l => l.date === dateStr);
+
+            // Render Events (Max 3)
+            let eventCount = 0;
+
+            dayEvents.forEach(ev => {
+                if (eventCount < 3) {
+                    const isBlocker = ev.type === 'blocker';
+                    const isHoliday = ev.type === 'holiday';
+                    const pillClass = isBlocker ? 'event-blocker' : (isHoliday ? 'event-holiday' : 'event-job');
+                    html += `<div class="calendar-event ${pillClass}" title="${ev.title}">${ev.title}</div>`;
+                    eventCount++;
+                }
+            });
+
+            leadEvents.forEach(l => {
+                if (eventCount < 3) {
+                    html += `<div class="calendar-event event-quote" title="Lead: ${l.name}">Lead: ${l.name}</div>`;
+                    eventCount++;
+                }
+            });
+
+            if (dayEvents.length + leadEvents.length > 3) {
+                html += `<div class="more-events">+${(dayEvents.length + leadEvents.length) - 3} more</div>`;
+            }
+
+            dayDiv.innerHTML = html;
+            grid.appendChild(dayDiv);
+        }
+
+        // Next Month Padding (Fill grid to 42 cells 6x7)
+        const TotalCells = 42;
+        const currentCells = firstDayOfMonth + daysInMonth;
+        for (let i = 1; i <= (TotalCells - currentCells); i++) {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'calendar-day other-month';
+            dayDiv.innerHTML = `<div class="day-number">${i}</div>`;
+            grid.appendChild(dayDiv);
+        }
     },
 
     renderLeads: function () {
@@ -1119,9 +1295,11 @@ const crm = {
             if (lead.status === 'Closed') badge = 'badge-closed';
             if (lead.status === 'Archived') badge = 'badge-archived';
 
+            const mediaIcon = (lead.media && lead.media.length > 0) ? '<span title="Has Media">📷</span>' : '';
+
             tr.innerHTML = `
                 <td>${lead.date}</td>
-                <td><strong>${lead.name}</strong><br><small>${lead.email || ''}</small></td>
+                <td><strong>${lead.name}</strong> ${mediaIcon}<br><small>${lead.email || ''}</small></td>
                 <td>${lead.service}</td>
                 <td><span class="badge ${badge}">${lead.status}</span></td>
                 <td class="action-cell" onclick="event.stopPropagation()">
@@ -1471,7 +1649,9 @@ const crm = {
         });
 
         // Auto scroll to bottom
-        container.scrollTop = container.scrollHeight;
+        setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+        }, 50);
     },
 
     updateStats: function () {
@@ -1521,6 +1701,82 @@ const crm = {
         } else {
             document.getElementById('onboarding-overlay').classList.remove('open');
             localStorage.setItem('wilco_onboarding_seen', 'true');
+        }
+    },
+
+    // --- MEDIA HANDLING ---
+
+    currentMedia: [], // Temp store for modal
+
+    handleFileUpload: async function (event) {
+        const files = event.target.files;
+        if (!files.length) return;
+
+        const previewContainer = document.getElementById('media-previews');
+        previewContainer.innerHTML += '<div class="loading-spinner">Uploading...</div>';
+
+        for (let file of files) {
+            try {
+                // simple path: uploads/{timestamp}_{filename}
+                const path = `uploads/${Date.now()}_${file.name}`;
+                const ref = this.storage.ref().child(path);
+
+                const snapshot = await ref.put(file);
+                const url = await snapshot.ref.getDownloadURL();
+
+                this.currentMedia.push({
+                    url: url,
+                    type: file.type,
+                    name: file.name
+                });
+            } catch (error) {
+                console.error("Upload failed:", error);
+                alert("Upload failed: " + error.message);
+            }
+        }
+
+        this.renderMediaPreviews();
+    },
+
+    deleteMedia: function (index) {
+        this.currentMedia.splice(index, 1);
+        this.renderMediaPreviews();
+    },
+
+    renderMediaPreviews: function () {
+        const container = document.getElementById('media-previews');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        this.currentMedia.forEach((media, index) => {
+            const div = document.createElement('div');
+            div.className = 'media-preview-item';
+            div.style.position = 'relative';
+            div.style.display = 'inline-block';
+            div.style.margin = '5px';
+
+            // Check if image
+            if ((media.type && media.type.startsWith('image/')) || (media.url && media.url.match(/\.(jpeg|jpg|gif|png)/i))) {
+                div.innerHTML = `<img src="${media.url}" alt="Preview" style="width:60px; height:60px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${media.url}')">`;
+            } else {
+                div.innerHTML = `<div class="file-icon" style="width:60px; height:60px; background:#eee; display:flex; align-items:center; justify-content:center; border-radius:4px; cursor:pointer;" onclick="window.open('${media.url}')">📄</div>`;
+            }
+
+            div.innerHTML += `<button style="position:absolute; top:-5px; right:-5px; background:red; color:white; border:none; border-radius:50%; width:18px; height:18px; line-height:16px; font-size:12px; cursor:pointer;" onclick="crm.deleteMedia(${index})">×</button>`;
+            container.appendChild(div);
+        });
+    },
+
+    toggleChat: function () {
+        const win = document.getElementById('ai-chat-window');
+        if (win) {
+            win.classList.toggle('open');
+            if (win.classList.contains('open')) {
+                this.renderMessages();
+                // Auto focus input
+                setTimeout(() => document.getElementById('message-input').focus(), 100);
+            }
         }
     }
 };

@@ -1,0 +1,114 @@
+/* Calendar Wrapper */
+.calendar-wrapper {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    height: calc(100vh - 180px);
+    /* Fill remaining space */
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-days-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: var(--secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    /* Max 6 weeks */
+    flex: 1;
+}
+
+.calendar-day {
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem;
+    position: relative;
+    background: var(--bg-card);
+    transition: background 0.2s;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.calendar-day:hover {
+    background: var(--secondary);
+}
+
+.calendar-day.other-month {
+    background: var(--bg-main);
+    /* Slightly darker/different for disabled */
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.calendar-day.today {
+    background: rgba(37, 99, 235, 0.05);
+    /* Light accent tint */
+}
+
+.day-number {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.calendar-day.today .day-number {
+    color: var(--accent);
+}
+
+/* Events in Day */
+.calendar-event {
+    font-size: 0.75rem;
+    padding: 2px 4px;
+    margin-bottom: 2px;
+    border-radius: 4px;
+    background: var(--accent);
+    /* Default Job Color */
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+/* Event Types */
+.event-job {
+    background: var(--accent);
+}
+
+.event-quote {
+    background: var(--warning);
+    color: black;
+}
+
+.event-blocker {
+    background: var(--danger);
+    opacity: 0.8;
+}
+
+.event-holiday {
+    background: #8b5cf6;
+}
+
+/* Purple */
+
+/* "More" indicator */
+.more-events {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 2px;
+}
