@@ -212,11 +212,15 @@ export const clientAgentFlow = ai.defineFlow(
 export const clientAgent = onCall(
     {
         cors: true, // Enable CORS for web client
+        memory: "1GiB",
+        timeoutSeconds: 120,
     },
     async (request) => {
         // request.data contains the arguments passed from the client
         try {
+            console.log("Starting clientAgentFlow with input:", JSON.stringify(request.data));
             const result = await clientAgentFlow(request.data);
+            console.log("Flow completed successfully:", JSON.stringify(result));
             return result;
         } catch (e: any) {
             console.error("Flow Error:", e);
