@@ -272,13 +272,23 @@ const crm = {
             this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
                 .then(() => {
                     this.auth.onAuthStateChanged(user => {
-                        if (user) {
-                            this.showDashboard(user.email);
-                            this.loadFirestoreData();
-                            this.setupMessageListener(); // Listen for chat
-                            this.startOnboarding(); // Trigger
-                        } else {
-                            this.showLogin();
+                        try {
+                            if (user) {
+                                console.log("User detected:", user.email);
+                                this.showDashboard(user.email);
+                                this.loadFirestoreData();
+                                this.setupMessageListener(); // Listen for chat
+                                if (typeof this.startOnboarding === 'function') {
+                                    this.startOnboarding();
+                                } else {
+                                    console.error("onboarding function missing");
+                                }
+                            } else {
+                                this.showLogin();
+                            }
+                        } catch (err) {
+                            console.error("Auth State Flow Error:", err);
+                            alert("Critical Error in Login Flow: " + err.message);
                         }
                     });
                 })
