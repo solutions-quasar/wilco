@@ -1395,7 +1395,7 @@ const crm = {
 
                 clientAgent({
                     message: text,
-                    userId: this.clients.find(c => c.email === user.email)?.id
+                    userId: (this.clients.find(c => c.email === user.email)?.id) || undefined
                 }).then(async (result) => {
                     // Remove temp "Thinking..." message
                     this.messages = this.messages.filter(m => m.id !== tempId);
