@@ -19,7 +19,7 @@ const crm = {
     onboardingSteps: [
         { title: "Welcome to WilcoCRM 🚀", text: "Your all-in-one command center for managing leads, clients, and jobs. Let's take a quick tour!", icon: "👋" },
         { title: "The Sidebar 📂", text: "Use the menu on the left to navigate between Leads, Schedule, Invoices, Team, and Messages.", icon: "⬅️" },
-        { title: "Quick Actions ⚡", text: "Look for the 'three dots' button on any item to Edit, Delete, or Archive it instantly.", icon: "⋮" },
+        { title: "Quick Actions ⚡", text: "Use the buttons on any item to Edit, Delete, or Archive it instantly.", icon: "✅" },
         { title: "You're Ready! ✅", text: "That's it! You can start managing your business. Click 'Finish' to jump in.", icon: "🎉" }
     ],
     currentViewDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
@@ -820,13 +820,7 @@ const crm = {
     },
 
     // --- QUICK ACTIONS ---
-    toggleMenu: function (id, event) {
-        if (event) event.stopPropagation();
-        const menu = document.getElementById(`menu-${id}`);
-        const isVisible = menu.classList.contains('show');
-        this.closeAllMenus();
-        if (!isVisible) menu.classList.add('show');
-    },
+
 
     // --- NAVIGATION ---
     toggleSidebar: function () {
@@ -962,12 +956,11 @@ const crm = {
                 <td><strong>${lead.name}</strong><br><small>${lead.email || ''}</small></td>
                 <td>${lead.service}</td>
                 <td><span class="badge ${badge}">${lead.status}</span></td>
-                <td class="action-cell" onclick="event.stopPropagation()"> <!-- Stop propagation for cell -->
-                    <button class="action-trigger" onclick="crm.toggleMenu('${lead.id}', event)">⋮</button>
-                    <div id="menu-${lead.id}" class="action-menu">
-                        <button onclick="crm.openModal('lead', '${lead.id}')">Edit</button>
-                        <button onclick="crm.archiveItem('lead', '${lead.id}')">Archive</button>
-                        <button class="danger" onclick="crm.deleteItem('lead', '${lead.id}')">Delete</button>
+                <td class="action-cell" onclick="event.stopPropagation()">
+                    <div class="action-buttons">
+                        <button class="btn-text" onclick="crm.openModal('lead', '${lead.id}')">Edit</button>
+                        <button class="btn-text warning" onclick="crm.archiveItem('lead', '${lead.id}')">Archive</button>
+                        <button class="btn-text danger" onclick="crm.deleteItem('lead', '${lead.id}')">Delete</button>
                     </div>
                 </td>
             `;
@@ -998,12 +991,9 @@ const crm = {
                     <h4>${item.title}</h4>
                     <p>Client: ${item.client} • Location: ${item.address}</p>
                 </div>
-                <div style="margin-left: auto; position: relative;" class="action-cell" onclick="event.stopPropagation()">
-                     <button class="action-trigger" onclick="crm.toggleMenu('${item.id}', event)">⋮</button>
-                     <div id="menu-${item.id}" class="action-menu">
-                        <button onclick="crm.openModal('task', '${item.id}')">Edit</button>
-                        <button class="danger" onclick="crm.deleteItem('task', '${item.id}')">Delete</button>
-                    </div>
+                <div style="margin-left: auto;" class="action-buttons" onclick="event.stopPropagation()">
+                     <button class="btn-text" onclick="crm.openModal('task', '${item.id}')">Edit</button>
+                     <button class="btn-text danger" onclick="crm.deleteItem('task', '${item.id}')">Delete</button>
                 </div>
             `;
             container.appendChild(div);
@@ -1025,10 +1015,9 @@ const crm = {
                 <td><strong>$${inv.amount}</strong></td>
                 <td><span class="badge ${badge}">${inv.status}</span></td>
                 <td class="action-cell" onclick="event.stopPropagation()">
-                    <button class="action-trigger" onclick="crm.toggleMenu('${inv.id}', event)">⋮</button>
-                    <div id="menu-${inv.id}" class="action-menu">
-                        <button onclick="crm.openModal('invoice', '${inv.id}')">Edit</button>
-                        <button class="danger" onclick="crm.deleteItem('invoice', '${inv.id}')">Delete</button>
+                    <div class="action-buttons">
+                        <button class="btn-text" onclick="crm.openModal('invoice', '${inv.id}')">Edit</button>
+                        <button class="btn-text danger" onclick="crm.deleteItem('invoice', '${inv.id}')">Delete</button>
                     </div>
                 </td>
             `;
@@ -1048,10 +1037,9 @@ const crm = {
                 <td>${prod.category}</td>
                 <td>$${prod.price}</td>
                 <td class="action-cell" onclick="event.stopPropagation()">
-                    <button class="action-trigger" onclick="crm.toggleMenu('${prod.id}', event)">⋮</button>
-                    <div id="menu-${prod.id}" class="action-menu">
-                        <button onclick="crm.openModal('product', '${prod.id}')">Edit</button>
-                        <button class="danger" onclick="crm.deleteItem('product', '${prod.id}')">Delete</button>
+                    <div class="action-buttons">
+                        <button class="btn-text" onclick="crm.openModal('product', '${prod.id}')">Edit</button>
+                        <button class="btn-text danger" onclick="crm.deleteItem('product', '${prod.id}')">Delete</button>
                     </div>
                 </td>
             `;
@@ -1071,10 +1059,9 @@ const crm = {
                 <td>${c.email}</td>
                 <td>${c.phone}</td>
                 <td class="action-cell" onclick="event.stopPropagation()">
-                    <button class="action-trigger" onclick="crm.toggleMenu('${c.id}', event)">⋮</button>
-                    <div id="menu-${c.id}" class="action-menu">
-                        <button onclick="crm.openModal('client', '${c.id}')">Edit</button>
-                        <button class="danger" onclick="crm.deleteItem('client', '${c.id}')">Delete</button>
+                    <div class="action-buttons">
+                        <button class="btn-text" onclick="crm.openModal('client', '${c.id}')">Edit</button>
+                        <button class="btn-text danger" onclick="crm.deleteItem('client', '${c.id}')">Delete</button>
                     </div>
                 </td>
             `;
@@ -1095,10 +1082,9 @@ const crm = {
                 <td>${u.email}</td>
                 <td>${u.phone}</td>
                 <td class="action-cell" onclick="event.stopPropagation()">
-                    <button class="action-trigger" onclick="crm.toggleMenu('${u.id}', event)">⋮</button>
-                    <div id="menu-${u.id}" class="action-menu">
-                        <button onclick="crm.openModal('team', '${u.id}')">Edit</button>
-                        <button class="danger" onclick="crm.deleteItem('team', '${u.id}')">Delete</button>
+                    <div class="action-buttons">
+                        <button class="btn-text" onclick="crm.openModal('team', '${u.id}')">Edit</button>
+                        <button class="btn-text danger" onclick="crm.deleteItem('team', '${u.id}')">Delete</button>
                     </div>
                 </td>
             `;

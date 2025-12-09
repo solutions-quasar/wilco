@@ -566,28 +566,32 @@ tr.archived {
     display: none;
 }
 
-.action-menu.show {
-    display: block;
-}
 
-.action-menu button {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 0.75rem 1rem;
-    background: transparent;
+
+.btn-text {
+    background: none;
     border: none;
-    color: var(--text-main);
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: all 0.2s;
 }
 
-.action-menu button:hover {
-    background: var(--secondary);
+.btn-text:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    text-decoration: underline;
 }
 
-.action-menu button.danger {
+.btn-text.danger:hover {
     color: var(--danger);
+}
+
+.btn-text.warning:hover {
+    color: var(--warning);
 }
 
 /* Modals */
@@ -897,16 +901,6 @@ tr.archived {
     gap: 0.75rem;
 }
 
-.chat-input-area input {
-    transform: scale(0.95);
-    opacity: 0;
-}
-
-to {
-    transform: scale(1);
-    opacity: 1;
-}
-}
 
 .modal-header {
     padding: 1.5rem;
