@@ -390,7 +390,26 @@ const crm = {
         document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
         document.getElementById(`view-${viewId}`).classList.add('active');
 
+        // Close mobile sidebar on navigate
+        this.toggleSidebar(false);
+
         if (viewId === 'daily') this.updateDateDisplay();
+    },
+
+    toggleSidebar: function (forceState = null) {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('mobile-overlay');
+
+        if (forceState === false) {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('open');
+        } else if (forceState === true) {
+            sidebar.classList.add('mobile-open');
+            overlay.classList.add('open');
+        } else {
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('open');
+        }
     },
 
     // --- MODAL SYSTEM ---
