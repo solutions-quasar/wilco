@@ -56,10 +56,37 @@
                 </div>
 
                 <button type="submit" class="btn-crm">Login to Dashboard</button>
+
+                <div
+                    style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; align-items: center;">
+                    <a href="#" onclick="crm.openForgotModal()"
+                        style="color: var(--warning); text-decoration: none; font-size: 0.85rem;">Forgot Password?</a>
+                    <button type="button" onclick="crm.sendMagicLink()"
+                        style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; width: 100%;">
+                        ✨ Login via Magic Link
+                    </button>
+                </div>
             </form>
             <p style="margin-top: 1rem; font-size: 0.8rem; color: #94a3b8; display: none;">
                 (Mock Mode: Just click Login!)
             </p>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgot-overlay" class="modal-overlay">
+        <div class="modal-card" style="max-width: 400px; padding: 2rem;">
+            <div class="modal-header">
+                <h3>Reset Password</h3>
+                <button class="close-btn"
+                    onclick="document.getElementById('forgot-overlay').classList.remove('open')">×</button>
+            </div>
+            <div style="padding: 1.5rem 0;">
+                <p style="color: var(--text-muted); margin-bottom: 1rem;">Enter your email to receive a password reset
+                    link.</p>
+                <input type="email" id="reset-email" placeholder="admin@wilcoplumbing.com">
+            </div>
+            <button class="btn-crm" style="width: 100%;" onclick="crm.resetPassword()">Send Reset Link</button>
         </div>
     </div>
 
