@@ -1319,12 +1319,13 @@ const crm = {
     setupMessageListener: function () {
         if (!this.db) return;
 
-        // Listen to messages (limit to last 50)
+        // Listen to messages (Show latest 50)
         this.db.collection('messages')
-            .orderBy('timestamp', 'asc')
+            .orderBy('timestamp', 'desc')
             .limit(50)
             .onSnapshot((snapshot) => {
-                this.messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                this.messages = loaded.reverse(); // Reverse to show oldest first in UI
                 this.renderMessages();
             });
     },
