@@ -9,6 +9,8 @@
     --danger: #ef4444;
     --bg-body: #020617;
     --bg-card: #0f172a;
+    --bg-main: #1e293b;
+    --gold: #eab308;
     --border: #1e293b;
     --sidebar-width: 260px;
 }
@@ -273,8 +275,7 @@ textarea {
 #dashboard-wrapper {
     display: none;
     /* Hidden by default */
-    display: flex;
-    /* Sidebar layout */
+    /* Sidebar layout handled by JS toggle or generic flex when active */
     min-height: 100vh;
     padding-top: 30px;
     /* Space for banner */
@@ -346,6 +347,14 @@ textarea {
 
 .nav-item.active {
     border-left: 3px solid var(--accent);
+}
+
+.chat-input-area {
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 1rem;
+    background: var(--bg-card);
 }
 
 .sidebar-footer {
@@ -706,13 +715,19 @@ tr.archived {
     width: 100px;
 }
 
-.line-item-row .btn-icon {
+.line-item-row .btn-icon,
+.btn-icon {
     background: none;
     border: none;
     font-size: 1.25rem;
     cursor: pointer;
     color: var(--text-muted);
     padding: 0 0.5rem;
+    transition: color 0.2s;
+}
+
+.btn-icon:hover {
+    color: var(--text-main);
 }
 
 .line-item-row .btn-icon:hover {
@@ -796,6 +811,82 @@ tr.archived {
     opacity: 0.8;
     display: block;
     font-weight: 600;
+}
+
+/* --- MOBILE STYLES --- */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
+        width: 80%;
+        max-width: 300px;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    .mobile-header-crm {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 99;
+    }
+
+    .menu-toggle-btn {
+        background: none;
+        border: none;
+        color: var(--text-main);
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+
+    .content-area {
+        margin-left: 0;
+        padding: 1rem;
+    }
+
+    .mobile-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 900;
+    }
+
+    .mobile-overlay.open {
+        display: block;
+    }
+
+    /* Adjust tables for mobile if needed, usually overflow-x: auto is enough */
+    .data-table-container {
+        overflow-x: auto;
+    }
+}
+
+/* Desktop Defaults */
+.mobile-header-crm {
+    display: none;
+}
+
+.mobile-overlay {
+    display: none;
+}
+
+/* Action Buttons Container */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
 }
 
 .chat-input-area {
