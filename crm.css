@@ -1,18 +1,19 @@
 :root {
-    --primary: #0f172a;
-    --secondary: #1e293b;
-    --accent: #c2410c;
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
+    --primary: #111827;
+    --secondary: #f3f4f6;
+    --accent: #2563eb;
+    --text-main: #111827;
+    --text-muted: #6b7280;
     --success: #22c55e;
-    --warning: #eab308;
+    --warning: #f59e0b;
     --danger: #ef4444;
-    --bg-body: #020617;
-    --bg-card: #0f172a;
-    --bg-main: #1e293b;
-    --gold: #eab308;
-    --border: #1e293b;
+    --bg-body: #ffffff;
+    --bg-card: #ffffff;
+    --bg-main: #f9fafb;
+    --border: #e5e7eb;
     --sidebar-width: 260px;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
 * {
@@ -44,15 +45,14 @@ body {
     z-index: 200;
 }
 
-/* --- LOGIN SCREEN (Industrial Plumbing Theme) --- */
+/* --- LOGIN SCREEN (Clean Minimalist) --- */
 #login-screen {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    /* Dark Metallic Background with Radial Glow */
-    background: radial-gradient(circle at 50% 50%, #2b303b 0%, #1a1c23 100%);
+    background: #f9fafb;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -60,64 +60,24 @@ body {
 }
 
 .login-card {
-    background: rgba(30, 41, 59, 0.95);
+    background: white;
     padding: 3rem;
     border-radius: 12px;
-    box-shadow:
-        0 20px 40px rgba(0, 0, 0, 0.6),
-        0 0 15px rgba(234, 179, 8, 0.2);
-    /* Subtle brass glow */
+    box-shadow: var(--shadow-md);
     width: 100%;
-    max-width: 420px;
+    max-width: 400px;
     text-align: center;
-    border: 1px solid #475569;
-    /* Brass Top Border */
-    border-top: 4px solid #eab308;
-    /* Brass Gold */
+    border: 1px solid var(--border);
     position: relative;
     overflow: hidden;
 }
 
-/* Propane Flame Effect Animation */
-@keyframes flameFlicker {
-    0% {
-        opacity: 0.5;
-        transform: translateX(-50%) scale(1);
-    }
-
-    100% {
-        opacity: 0.8;
-        transform: translateX(-50%) scale(1.1);
-    }
-}
-
-.login-card::after {
-    content: '';
-    position: absolute;
-    bottom: -50px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100px;
-    height: 100px;
-    background: radial-gradient(circle, rgba(56, 189, 248, 0.4) 0%, transparent 70%);
-    /* Propane Blue */
-    filter: blur(20px);
-    pointer-events: none;
-    opacity: 0.6;
-    animation: flameFlicker 3s infinite alternate;
-}
-
 .login-card h2 {
     margin-bottom: 2rem;
-    color: #e2e8f0;
+    color: var(--text-main);
     font-weight: 700;
     font-family: 'Inter', sans-serif;
     letter-spacing: -0.5px;
-    /* Brass Text Gradient */
-    background: linear-gradient(135deg, #fcd34d 0%, #d97706 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-transform: uppercase;
     font-size: 1.8rem;
 }
 
@@ -130,27 +90,26 @@ body {
 .login-card label {
     display: block;
     margin-bottom: 0.5rem;
-    color: #94a3b8;
+    color: var(--text-muted);
     font-size: 0.9rem;
     font-weight: 500;
 }
 
 .login-card input {
     width: 100%;
-    padding: 0.85rem;
-    border: 1px solid #334155;
-    background: #0f172a;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    background: var(--bg-body);
     border-radius: 6px;
     font-size: 1rem;
-    color: #fff;
+    color: var(--text-main);
     transition: all 0.2s;
 }
 
 .login-card input:focus {
     outline: none;
-    border-color: #38bdf8;
-    /* Propane Blue Focus */
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 /* Login Options (Checkboxes) */
@@ -220,7 +179,7 @@ body {
 }
 
 .btn-secondary:hover {
-    background: #334155;
+    background: #e5e7eb;
 }
 
 
@@ -249,8 +208,8 @@ select:focus,
 textarea:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.2);
-    background: #1e293b;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    background: var(--bg-body);
 }
 
 /* Custom Select Arrow */
@@ -332,11 +291,9 @@ textarea {
 }
 
 .nav-btn.active {
-    background: rgba(234, 179, 8, 0.1);
-    /* Subtle Gold/Brass tint */
-    color: var(--warning);
-    /* Gold/Brass text */
-    border-left: 3px solid var(--warning);
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
 }
 
 .nav-item:hover,
@@ -441,7 +398,7 @@ textarea {
 }
 
 .btn-nav:hover {
-    background: #334155;
+    background: #e5e7eb;
 }
 
 #workday-date {
@@ -801,17 +758,18 @@ tr.archived {
 
 .message.self {
     align-self: flex-end;
-    background: linear-gradient(135deg, var(--gold), #8a6e3e);
-    color: #0d1117;
+    background: var(--accent);
+    color: white;
     border-bottom-right-radius: 2px;
 }
 
 .message.other {
     align-self: flex-start;
-    background: var(--bg-main);
+    background: white;
     border: 1px solid var(--border);
     color: var(--text-main);
     border-bottom-left-radius: 2px;
+    box-shadow: var(--shadow-sm);
 }
 
 .message .sender-name {
@@ -954,6 +912,7 @@ tr.archived {
 
 .schedule-item:hover {
     background-color: var(--secondary);
+    border-color: var(--accent);
 }
 
 .time-slot {
