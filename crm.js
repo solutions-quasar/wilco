@@ -1137,6 +1137,44 @@ const crm = {
         document.getElementById('stats-new').innerText = newLeads;
         document.getElementById('stats-active').innerText = active;
         document.getElementById('stats-revenue').innerText = '$' + invoiceRevenue.toLocaleString();
+    },
+
+    // --- ONBOARDING ---
+    startOnboarding: function () {
+        if (!localStorage.getItem('wilco_onboarding_seen')) {
+            this.onboardingStep = 0;
+            document.getElementById('onboarding-overlay').classList.add('open');
+            this.renderOnboardingStep();
+        }
+    },
+
+    renderOnboardingStep: function () {
+        const step = this.onboardingSteps[this.onboardingStep];
+        const content = document.getElementById('onboarding-content');
+        const btn = document.getElementById('btn-onboarding-next');
+
+        content.innerHTML = `
+            <div style="font-size: 3rem; margin-bottom: 1rem;">${step.icon}</div>
+            <h3 style="color: var(--accent); margin-bottom: 1rem;">${step.title}</h3>
+            <p style="color: var(--text-muted); line-height: 1.6;">${step.text}</p>
+            <div class="step-dots" style="display:flex; justify-content:center; gap:0.5rem; margin-top:1.5rem;">
+                ${this.onboardingSteps.map((_, i) =>
+            `<span style="width:10px; height:10px; border-radius:50%; background:${i === this.onboardingStep ? 'var(--accent)' : 'var(--border)'};"></span>`
+        ).join('')}
+            </div>
+        `;
+
+        btn.innerText = (this.onboardingStep === this.onboardingSteps.length - 1) ? "Finish" : "Next";
+    },
+
+    nextOnboardingStep: function () {
+        if (this.onboardingStep < this.onboardingSteps.length - 1) {
+            this.onboardingStep++;
+            this.renderOnboardingStep();
+        } else {
+            document.getElementById('onboarding-overlay').classList.remove('open');
+            localStorage.setItem('wilco_onboarding_seen', 'true');
+        }
     }
 };
 
