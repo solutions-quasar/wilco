@@ -19,6 +19,17 @@
 </head>
 
 <body>
+    <!-- DEBUG ERROR HANDLER -->
+    <script>
+        window.onerror = function (msg, url, lineNo, columnNo, error) {
+            alert('JavasScript Error: ' + msg + '\nLine: ' + lineNo + '\nURL: ' + url);
+            return false;
+        };
+        window.onunhandledrejection = function (event) {
+            alert('Unhandled Promise Rejection: ' + event.reason);
+        };
+    </script>
+
 
     <!-- Login Screen -->
     <div id="login-screen">
