@@ -828,6 +828,35 @@ const crm = {
         if (!isVisible) menu.classList.add('show');
     },
 
+    // --- NAVIGATION ---
+    toggleSidebar: function () {
+        document.getElementById('dashboard-wrapper').classList.toggle('sidebar-open');
+        document.getElementById('mobile-overlay').classList.toggle('open');
+    },
+
+    switchView: function (viewId) {
+        // Hide all views
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        // Show selected view
+        const target = document.getElementById(`view-${viewId}`);
+        if (target) target.classList.add('active');
+
+        // Update active menu state
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        // Try to find the button that triggered this or match by viewId text if simple
+        // Instead, let's just highlight based on onclick attribute which is easier here
+        const btns = document.querySelectorAll('.nav-btn');
+        btns.forEach(btn => {
+            if (btn.getAttribute('onclick').includes(`'${viewId}'`)) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Close mobile sidebar if open
+        document.getElementById('dashboard-wrapper').classList.remove('sidebar-open');
+        document.getElementById('mobile-overlay').classList.remove('open');
+    },
+
     closeAllMenus: function () {
         document.querySelectorAll('.action-menu').forEach(el => el.classList.remove('show'));
     },

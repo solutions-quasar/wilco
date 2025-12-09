@@ -116,200 +116,236 @@
 
     <div id="dashboard-wrapper">
         <!-- Sidebar -->
-        <span id="user-email">admin@wilco.com</span>
-    </div>
-    <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%;">
-        <button id="logout-btn" class="btn-logout">Logout</button>
-        <button onclick="crm.forceSeed()"
-            style="background:none; border:none; color:var(--text-muted); font-size:0.7rem; cursor:pointer; text-align:left; padding:0;">Initialize
-            DB</button>
-    </div>
-    </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="content-area">
-
-        <!-- VIEW: Leads Dashboard -->
-        <div id="view-dashboard" class="view-section active">
-            <header class="view-header">
-                <h2>Leads Overview</h2>
-                <div class="header-actions">
-                    <button class="btn-crm small" onclick="crm.openModal('lead')">+ New Lead</button>
-                </div>
-            </header>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>New Leads</h3>
-                    <div class="value" id="stats-new">0</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Active Jobs</h3>
-                    <div class="value" id="stats-active">0</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Est. Revenue (Paid)</h3>
-                    <div class="value" id="stats-revenue">$0</div>
-                </div>
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>WILCO<span style="color:var(--text-main);">CRM</span></h2>
             </div>
 
-            <div class="data-table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Customer</th>
-                            <th>Service Type</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leads-table-body">
-                        <!-- Rows injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" onclick="crm.switchView('dashboard')">
+                    <span class="nav-icon">📊</span> Leads Dashboard
+                </button>
+                <button class="nav-btn" onclick="crm.switchView('daily')">
+                    <span class="nav-icon">📅</span> Daily Workday
+                </button>
+                <button class="nav-btn" onclick="crm.switchView('invoices')">
+                    <span class="nav-icon">📄</span> Invoices & Quotes
+                </button>
+                <button class="nav-btn" onclick="crm.switchView('products')">
+                    <span class="nav-icon">📦</span> Products & Services
+                </button>
+                <button class="nav-btn" onclick="crm.switchView('clients')">
+                    <span class="nav-icon">👥</span> Clients
+                </button>
+                <button class="nav-btn" onclick="crm.switchView('team')">
+                    <span class="nav-icon">👷</span> Team
+                </button>
+                <button class="nav-btn" onclick="crm.switchView('messages')">
+                    <span class="nav-icon">💬</span> Messages
+                </button>
+            </nav>
 
-        <!-- VIEW: Daily Workday -->
-        <div id="view-daily" class="view-section">
-            <header class="view-header">
-                <div class="date-controls">
-                    <button class="btn-nav" onclick="crm.changeDate(-1)">←</button>
-                    <input type="date" id="workday-date" onchange="crm.setDate(this)">
-                    <button class="btn-nav" onclick="crm.changeDate(1)">→</button>
-                </div>
-                <h2 id="current-date-display">Today</h2>
-                <button class="btn-crm small" onclick="crm.openModal('task')">+ Add Task</button>
-            </header>
-
-            <div class="schedule-container" id="schedule-list">
-                <!-- Schedule items injected via JS -->
-            </div>
-        </div>
-
-        <!-- VIEW: Invoices -->
-        <div id="view-invoices" class="view-section">
-            <header class="view-header">
-                <h2>Invoices & Quotes</h2>
-                <button class="btn-crm small" onclick="crm.openModal('invoice')">+ Create Invoice</button>
-            </header>
-
-            <div class="data-table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Client</th>
-                            <th>Date Issued</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="invoices-table-body">
-                        <!-- Rows injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- VIEW: Products -->
-        <div id="view-products" class="view-section">
-            <header class="view-header">
-                <h2>Products & Services</h2>
-                <button class="btn-crm small" onclick="crm.openModal('product')">+ New Product</button>
-            </header>
-
-            <div class="data-table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Product Name</th>
-                            <th>Category</th>
-                            <th>Price</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="products-table-body">
-                        <!-- Rows injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- VIEW: Clients -->
-        <div id="view-clients" class="view-section">
-            <header class="view-header">
-                <h2>Clients</h2>
-                <button class="btn-crm small" onclick="crm.openModal('client')">+ New Client</button>
-            </header>
-
-            <div class="data-table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Phone</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="clients-table-body">
-                        <!-- Rows injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- VIEW: Team -->
-        <div id="view-team" class="view-section">
-            <header class="view-header">
-                <h2>Team Management</h2>
-                <button class="btn-crm small" onclick="crm.openModal('team')">+ Add Member</button>
-            </header>
-
-            <div class="data-table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Role</th>
-                            <th>Email</th>
-                            <th>Phone</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="team-table-body">
-                        <!-- Rows injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- VIEW: Messages -->
-        <div id="view-messages" class="view-section"
-            style="height: calc(100vh - 100px); display: none; flex-direction: column;">
-            <header class="view-header" style="margin-bottom: 1rem;">
-                <h2>Team Chat</h2>
-            </header>
-
-            <div class="chat-container">
-                <div id="chat-messages" class="chat-messages">
-                    <!-- Messages Injected Here -->
-                    <div class="message system">
-                        <p>Welcome to the Team Chat!</p>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="avatar">LW</div>
+                    <div class="user-details">
+                        <span id="user-name">Lukas Wilson</span>
+                        <span id="user-email">admin@wilco.com</span>
                     </div>
                 </div>
-                <form id="chat-form" class="chat-input-area">
-                    <input type="text" id="message-input" placeholder="Type a message..." required autocomplete="off">
-                    <button type="submit" class="btn-crm">Send</button>
-                </form>
+                <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%;">
+                    <button id="logout-btn" class="btn-logout">Logout</button>
+                    <button onclick="crm.forceSeed()"
+                        style="background:none; border:none; color:var(--text-muted); font-size:0.7rem; cursor:pointer; text-align:left; padding:0;">Initialize
+                        DB</button>
+                </div>
             </div>
-        </div>
+        </aside>
 
-    </main>
+        <!-- Main Content -->
+        <main class="content-area">
+
+            <!-- VIEW: Leads Dashboard -->
+            <div id="view-dashboard" class="view-section active">
+                <header class="view-header">
+                    <h2>Leads Overview</h2>
+                    <div class="header-actions">
+                        <button class="btn-crm small" onclick="crm.openModal('lead')">+ New Lead</button>
+                    </div>
+                </header>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>New Leads</h3>
+                        <div class="value" id="stats-new">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Active Jobs</h3>
+                        <div class="value" id="stats-active">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Est. Revenue (Paid)</h3>
+                        <div class="value" id="stats-revenue">$0</div>
+                    </div>
+                </div>
+
+                <div class="data-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Service Type</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leads-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: Daily Workday -->
+            <div id="view-daily" class="view-section">
+                <header class="view-header">
+                    <div class="date-controls">
+                        <button class="btn-nav" onclick="crm.changeDate(-1)">←</button>
+                        <input type="date" id="workday-date" onchange="crm.setDate(this)">
+                        <button class="btn-nav" onclick="crm.changeDate(1)">→</button>
+                    </div>
+                    <h2 id="current-date-display">Today</h2>
+                    <button class="btn-crm small" onclick="crm.openModal('task')">+ Add Task</button>
+                </header>
+
+                <div class="schedule-container" id="schedule-list">
+                    <!-- Schedule items injected via JS -->
+                </div>
+            </div>
+
+            <!-- VIEW: Invoices -->
+            <div id="view-invoices" class="view-section">
+                <header class="view-header">
+                    <h2>Invoices & Quotes</h2>
+                    <button class="btn-crm small" onclick="crm.openModal('invoice')">+ Create Invoice</button>
+                </header>
+
+                <div class="data-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Client</th>
+                                <th>Date Issued</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoices-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: Products -->
+            <div id="view-products" class="view-section">
+                <header class="view-header">
+                    <h2>Products & Services</h2>
+                    <button class="btn-crm small" onclick="crm.openModal('product')">+ New Product</button>
+                </header>
+
+                <div class="data-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: Clients -->
+            <div id="view-clients" class="view-section">
+                <header class="view-header">
+                    <h2>Clients</h2>
+                    <button class="btn-crm small" onclick="crm.openModal('client')">+ New Client</button>
+                </header>
+
+                <div class="data-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clients-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: Team -->
+            <div id="view-team" class="view-section">
+                <header class="view-header">
+                    <h2>Team Management</h2>
+                    <button class="btn-crm small" onclick="crm.openModal('team')">+ Add Member</button>
+                </header>
+
+                <div class="data-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="team-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: Messages -->
+            <div id="view-messages" class="view-section"
+                style="height: calc(100vh - 100px); display: none; flex-direction: column;">
+                <header class="view-header" style="margin-bottom: 1rem;">
+                    <h2>Team Chat</h2>
+                </header>
+
+                <div class="chat-container">
+                    <div id="chat-messages" class="chat-messages">
+                        <!-- Messages Injected Here -->
+                        <div class="message system">
+                            <p>Welcome to the Team Chat!</p>
+                        </div>
+                    </div>
+                    <form id="chat-form" class="chat-input-area">
+                        <input type="text" id="message-input" placeholder="Type a message..." required
+                            autocomplete="off">
+                        <button type="submit" class="btn-crm">Send</button>
+                    </form>
+                </div>
+            </div>
+
+        </main>
     </div>
 
     <!-- Generic Modal Overlay -->
