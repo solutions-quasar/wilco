@@ -41,60 +41,6 @@ const crm = {
         });
     },
 
-    // ... (keep changeDate, setDate, startMockMode, loadLocalData, saveLocalData, startFirebaseMode as is) ...
-
-    setupEventListeners: function () {
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const rememberEmail = document.getElementById('remember-email').checked;
-            const staySignedIn = document.getElementById('stay-signed-in').checked;
-
-            // Handle "Remember Email"
-            if (rememberEmail) {
-                localStorage.setItem('wilco_saved_email', email);
-            } else {
-                localStorage.removeItem('wilco_saved_email');
-            }
-
-            if (this.isMock) {
-                // Mock Login
-                const userEmail = email || "admin@wilco.com";
-                this.showDashboard(userEmail);
-                this.renderAllViews();
-            } else {
-                // Firebase Login
-                try {
-                    const persistence = staySignedIn
-                        ? firebase.auth.Auth.Persistence.LOCAL
-                        : firebase.auth.Auth.Persistence.SESSION;
-
-                    await this.auth.setPersistence(persistence);
-                    await this.auth.signInWithEmailAndPassword(email, password);
-
-                    // onAuthStateChanged will handle the redirect
-                } catch (error) {
-                    console.error("Login Error:", error);
-                    alert("Login Failed: " + error.message);
-                }
-            }
-        });
-
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            if (!this.isMock && this.auth) {
-                this.auth.signOut().then(() => this.showLogin());
-            } else {
-                this.showLogin();
-            }
-        });
-
-        document.getElementById('modal-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveModalData();
-        });
-    },
-
     updateDateDisplay: function () {
         const dateEl = document.getElementById('current-date-display');
         const inputEl = document.getElementById('workday-date');
@@ -127,8 +73,7 @@ const crm = {
 
     startMockMode: function () {
         this.isMock = true;
-        document.getElementById('mock-banner').style.display = 'block';
-        document.getElementById('mock-banner').innerHTML = "LOCAL DATABASE MODE &bull; Changes saved to browser";
+        // Banner removed per user request
         this.loadLocalData();
     },
 
@@ -638,23 +583,26 @@ const crm = {
             id: id || `${formType}_${Date.now()}`,
         };
 
-        // Add basic fields
-        for (let i = 0; i < form.elements.length; i++) {
-            const field = form.elements[i];
-            if (field.name && field.type !== 'submit') {
-                newItem[field.name] = field.value;
+        // Extract Data using FormData (Robust)
+        const formData = new FormData(form);
+        for (const [key, value] of formData.entries()) {
+            if (key !== 'id' && key !== 'type') {
+                newItem[key] = value;
             }
         }
 
-        // Handle Invoice Specifics
+        // Handle Invoice Specifics (Line Items)
         if (formType === 'invoice') {
             const items = [];
             document.querySelectorAll('.line-item-row').forEach(row => {
-                items.push({
-                    productId: row.querySelector('.item-select').value,
-                    qty: row.querySelector('.item-qty').value,
-                    price: row.querySelector('.item-price').value
-                });
+                const prodId = row.querySelector('.item-select').value;
+                if (prodId) {
+                    items.push({
+                        productId: prodId,
+                        qty: row.querySelector('.item-qty').value,
+                        price: row.querySelector('.item-price').value
+                    });
+                }
             });
             newItem.items = items;
 
@@ -663,7 +611,7 @@ const crm = {
             if (client) newItem.client = client.name;
         }
 
-        // Logic by type & Collection Mapping
+        // Collection Mapping & Local Update
         let collectionName = '';
         if (formType === 'lead') {
             if (!newItem.date) newItem.date = new Date().toISOString().split('T')[0];
@@ -683,15 +631,17 @@ const crm = {
             this.updateLocalArray('clients', newItem);
         }
 
+        console.log(`Attempting to save [${formType}] to Firestore. ID: ${newItem.id}`, newItem);
+
         // Firestore Write
         if (!this.isMock && collectionName) {
             try {
                 await this.db.collection(collectionName).doc(newItem.id).set(newItem);
-                console.log(`Saved to Firestore: ${collectionName}/${newItem.id}`);
+                console.log(`SUCCESS: Saved to Firestore collection [${collectionName}].`);
             } catch (error) {
                 console.error("Firestore Save Error:", error);
-                alert("Error Saving Data: " + error.message);
-                return; // Stop if save failed
+                alert("Error Saving Data to Database:\n" + error.message);
+                return; // Stop local save if DB failed
             }
         }
 
