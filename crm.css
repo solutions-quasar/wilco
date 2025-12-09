@@ -498,6 +498,11 @@ td {
     padding: 1rem;
     text-align: left;
     border-bottom: 1px solid var(--border);
+    transition: background-color 0.2s;
+}
+
+tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.03);
 }
 
 th {
@@ -677,11 +682,11 @@ tr.archived {
     align-items: center;
     gap: 1.5rem;
     cursor: pointer;
-    transition: background-color 0.1s;
+    transition: background-color 0.2s;
 }
 
 .schedule-item:hover {
-    background-color: var(--secondary);
+    background-color: rgba(255, 255, 255, 0.03);
 }
 
 .time-slot {
