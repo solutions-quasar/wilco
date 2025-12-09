@@ -600,6 +600,20 @@ const crm = {
         if (nextDay) nextDay.addEventListener('click', () => this.changeDate(1));
         if (dateInput) dateInput.addEventListener('change', (e) => this.setDate(e.target));
 
+        // Chat Form Listener
+        const chatForm = document.getElementById('chat-form');
+        if (chatForm) {
+            chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('message-input');
+                const text = input.value.trim();
+                if (text) {
+                    this.sendMessage(text);
+                    input.value = '';
+                }
+            });
+        }
+
         // Password Toggle
         const togglePassword = document.getElementById('toggle-password');
         const passwordInput = document.getElementById('password');
