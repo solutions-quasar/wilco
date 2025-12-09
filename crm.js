@@ -822,6 +822,19 @@ const crm = {
         document.querySelectorAll('.action-menu').forEach(el => el.classList.remove('show'));
     },
 
+    showDashboard: function (email) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('dashboard-wrapper').style.display = 'flex';
+        document.querySelector('.content-area').style.display = 'block';
+        if (email) document.getElementById('user-email').innerText = email;
+    },
+
+    showLogin: function () {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('dashboard-wrapper').style.display = 'none';
+        document.querySelector('.content-area').style.display = 'none';
+    },
+
     deleteItem: async function (type, id) {
         if (!confirm("Delete this item?")) return;
 
