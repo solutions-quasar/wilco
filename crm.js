@@ -134,6 +134,39 @@ const crm = {
         localStorage.setItem('wilco_clients', JSON.stringify(this.clients));
     },
 
+    startFirebaseMode: function () {
+        if (typeof firebase === 'undefined') {
+            console.error("Firebase SDK not loaded");
+            alert("Critical Error: Firebase SDK not found. Check internet connection.");
+            return;
+        }
+
+        try {
+            // Initialize Firebase if not already done
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+
+            this.db = firebase.firestore();
+            this.auth = firebase.auth();
+            console.log("Firebase initialized successfully");
+
+            // Auth State Listener
+            this.auth.onAuthStateChanged(user => {
+                if (user) {
+                    this.showDashboard(user.email);
+                    this.loadFirestoreData();
+                } else {
+                    this.showLogin();
+                }
+            });
+
+        } catch (e) {
+            console.error("Firebase Init Error:", e);
+            alert("Firebase Init Failed: " + e.message + "\nCheck your firebase_config.js!");
+        }
+    },
+
     loadFirestoreData: async function () {
         if (!this.db) return;
 
