@@ -74,6 +74,18 @@
         <button class="menu-toggle-btn" onclick="crm.toggleSidebar()">☰</button>
     </div>
 
+    <!-- Onboarding Modal -->
+    <div id="onboarding-overlay" class="modal-overlay">
+        <div class="modal-card" id="onboarding-card" style="max-width: 500px; text-align: center; padding: 2rem;">
+            <div id="onboarding-content">
+                <!-- Dynamic Content Here -->
+            </div>
+            <div class="modal-footer" style="justify-content: center; margin-top: 1.5rem;">
+                <button class="btn-crm" id="btn-onboarding-next" onclick="crm.nextOnboardingStep()">Next</button>
+            </div>
+        </div>
+    </div>
+
     <div id="dashboard-wrapper">
         <!-- Sidebar -->
         <aside class="sidebar">

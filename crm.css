@@ -1058,3 +1058,43 @@ to {
 .mobile-header-crm {
     display: none;
 }
+
+/* --- ONBOARDING GUIDE --- */
+.onboarding-step-image {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.onboarding-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+}
+
+.onboarding-text {
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.onboarding-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: 0.3s;
+}
+
+.dot.active {
+    background: var(--accent);
+    transform: scale(1.2);
+}
