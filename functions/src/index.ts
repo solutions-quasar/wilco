@@ -1,24 +1,23 @@
-import * as z from "zod";
+import * as z from "zod"; // Use zod directly
 import * as admin from "firebase-admin";
 
 // Import Genkit & Plugins
 import { genkit } from "genkit";
 import { googleAI, gemini15Flash } from "@genkit-ai/googleai";
-import { onFlow } from "@genkit-ai/firebase/functions";
+import { onCall } from "firebase-functions/v2/https";
 
-// Initialize Firebase Admin (for Firestore Access)
+// Initialize Firebase Admin
 admin.initializeApp();
 const db = admin.firestore();
 
 // Initialize Genkit
 const ai = genkit({
     plugins: [googleAI()],
-    model: gemini15Flash, // Default model
+    model: gemini15Flash,
 });
 
 // --- DEFINE TOOLS ---
 
-// Tool: Check Schedule Availability
 const checkAvailability = ai.defineTool(
     {
         name: "checkAvailability",
@@ -27,19 +26,14 @@ const checkAvailability = ai.defineTool(
         outputSchema: z.object({ available: z.boolean(), slots: z.array(z.string()) }),
     },
     async ({ date }) => {
-        // Basic mock logic: Check existing tasks in Firestore
         const snapshot = await db.collection("schedule").where("date", "==", date).get();
         const busyTimes = snapshot.docs.map(doc => doc.data().time);
-
-        // Assume 9-5 workday
         const allSlots = ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00"];
         const freeSlots = allSlots.filter(slot => !busyTimes.includes(slot));
-
         return { available: freeSlots.length > 0, slots: freeSlots };
     }
 );
 
-// Tool: Get Product Price
 const getProductPrice = ai.defineTool(
     {
         name: "getProductPrice",
@@ -48,12 +42,10 @@ const getProductPrice = ai.defineTool(
         outputSchema: z.object({ price: z.number().optional(), found: z.boolean() }),
     },
     async ({ productName }) => {
-        // Simple search (case-insensitive)
         const snapshot = await db.collection("products").get();
         const product = snapshot.docs.find(doc =>
             doc.data().name.toLowerCase().includes(productName.toLowerCase())
         );
-
         if (product) {
             return { price: parseFloat(product.data().price), found: true };
         }
@@ -63,19 +55,17 @@ const getProductPrice = ai.defineTool(
 
 // --- DEFINE FLOW ---
 
-export const clientAgent = onFlow(
-    ai,
+// 1. Define the Genkit Flow logic
+export const clientAgentFlow = ai.defineFlow(
     {
-        name: "clientAgent",
+        name: "clientAgentFlow",
         inputSchema: z.object({
             message: z.string(),
-            userId: z.string().optional(), // To look up client data
+            userId: z.string().optional(),
         }),
         outputSchema: z.object({ text: z.string() }),
-        authPolicy: "public-open", // For demo purposes, allow open access
     },
     async (input) => {
-        // 1. Fetch Context (Client Name, etc.)
         let context = "You are a helpful assistant for 'Wilco Plumbing'.";
         if (input.userId) {
             const userDoc = await db.collection("clients").doc(input.userId).get();
@@ -84,16 +74,31 @@ export const clientAgent = onFlow(
             }
         }
 
-        // 2. Call LLM with Tools
         const response = await ai.generate({
             prompt: input.message,
             system: `${context} 
-               Use the available tools to check schedule availability or check pricing when asked. 
-               If quoting, give an estimate based on the product price.
-               Be professional and concise.`,
+               Use the available tools to check schedule availability.
+               If quoting, give an estimate based on the product price.`,
             tools: [checkAvailability, getProductPrice],
         });
 
-        return { text: response.text() };
+        return { text: response.text };
+    }
+);
+
+// 2. Wrap it in a Firebase Cloud Function
+export const clientAgent = onCall(
+    {
+        cors: true, // Enable CORS for web client
+    },
+    async (request) => {
+        // request.data contains the arguments passed from the client
+        try {
+            const result = await clientAgentFlow(request.data);
+            return result;
+        } catch (e: any) {
+            console.error("Flow Error:", e);
+            throw new Error(e.message);
+        }
     }
 );

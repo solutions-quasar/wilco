@@ -1376,19 +1376,43 @@ const crm = {
                 timestamp: firebase.firestore.FieldValue.serverTimestamp() // Server time
             });
 
-            // 2. TRIGGER AI AGENT (Simulated for Demo)
-            // In production, this would be a Cloud Function trigger or direct HTTP call
-            // We keep this for the "Live Firebase but Localhost" case
-            if (window.location.hostname === 'localhost' || text.toLowerCase().includes('@ai')) {
-                setTimeout(async () => {
-                    const response = await this.mockAgentResponse(text);
+            // 2. TRIGGER AI AGENT (Real Cloud Function)
+            // Only trigger if message starts with @ai or we are testing
+            if (text.toLowerCase().includes('@ai')) {
+                const clientAgent = firebase.functions().httpsCallable('clientAgent');
+
+                // Show "Typing..." indicator (Optimistic UI)
+                const tempId = 'ai_typing_' + Date.now();
+                this.messages.push({
+                    text: "Thinking...",
+                    sender: "Wilco AI 🤖",
+                    senderId: "ai_agent",
+                    timestamp: Date.now(), // Local time for sorting
+                    isTemp: true,
+                    id: tempId
+                });
+                this.renderMessages();
+
+                clientAgent({
+                    message: text,
+                    userId: this.clients.find(c => c.email === user.email)?.id
+                }).then(async (result) => {
+                    // Remove temp "Thinking..." message
+                    this.messages = this.messages.filter(m => m.id !== tempId);
+
+                    // Save Real Response to Firestore
                     await this.db.collection('messages').add({
-                        text: response,
+                        text: result.data.text,
                         sender: 'Wilco AI 🤖',
                         senderId: 'ai_agent',
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                }, 1500);
+                }).catch(error => {
+                    console.error("AI Agent Error:", error);
+                    this.messages = this.messages.filter(m => m.id !== tempId);
+                    this.renderMessages(); // Clear typing indicator
+                    alert("AI Agent Failed: " + error.message);
+                });
             }
 
         } catch (error) {
