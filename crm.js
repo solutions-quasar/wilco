@@ -151,15 +151,26 @@ const crm = {
             this.auth = firebase.auth();
             console.log("Firebase initialized successfully");
 
-            // Auth State Listener
-            this.auth.onAuthStateChanged(user => {
-                if (user) {
-                    this.showDashboard(user.email);
-                    this.loadFirestoreData();
-                } else {
-                    this.showLogin();
-                }
-            });
+            // Explicitly set persistence
+            this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                .then(() => {
+                    this.auth.onAuthStateChanged(user => {
+                        if (user) {
+                            this.showDashboard(user.email);
+                            this.loadFirestoreData();
+                        } else {
+                            this.showLogin();
+                        }
+                    });
+                })
+                .catch((error) => {
+                    console.error("Auth Persistence Error:", error);
+                    // Fallback to basic listener if persistence fails
+                    this.auth.onAuthStateChanged(user => {
+                        if (user) { this.showDashboard(user.email); this.loadFirestoreData(); }
+                        else { this.showLogin(); }
+                    });
+                });
 
         } catch (e) {
             console.error("Firebase Init Error:", e);
