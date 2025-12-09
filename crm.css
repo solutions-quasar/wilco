@@ -376,6 +376,11 @@ textarea {
     display: block;
 }
 
+#view-messages.active {
+    display: flex;
+    flex-direction: column;
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;

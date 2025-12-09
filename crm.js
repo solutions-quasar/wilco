@@ -309,6 +309,12 @@ const crm = {
 
     startMockMode: function () {
         this.isMock = true;
+        // Mock Auth
+        this.auth = {
+            currentUser: { uid: 'mock_user_1', email: 'demo@wilco.com' },
+            signOut: () => Promise.resolve(),
+            onAuthStateChanged: (cb) => cb({ uid: 'mock_user_1', email: 'demo@wilco.com' })
+        };
         this.loadLocalData();
     },
 
@@ -375,6 +381,15 @@ const crm = {
             this.saveLocalData();
         }
 
+        const localMessages = localStorage.getItem('wilco_messages');
+        if (localMessages) this.messages = JSON.parse(localMessages);
+        else {
+            this.messages = [
+                { sender: "System", text: "Welcome to Wilco Chat! Type @ai to test the new agent.", senderId: "system", timestamp: Date.now() }
+            ];
+            this.saveLocalData();
+        }
+
         this.renderAllViews();
     },
 
@@ -386,6 +401,7 @@ const crm = {
         localStorage.setItem('wilco_products', JSON.stringify(this.products));
         localStorage.setItem('wilco_clients', JSON.stringify(this.clients));
         localStorage.setItem('wilco_team', JSON.stringify(this.team));
+        localStorage.setItem('wilco_messages', JSON.stringify(this.messages));
     },
 
     startFirebaseMode: function () {
@@ -1072,6 +1088,7 @@ const crm = {
         this.renderProducts();
         this.renderClients();
         this.renderTeam();
+        this.renderMessages(); // Add this line
     },
 
     renderLeads: function () {
@@ -1300,12 +1317,41 @@ const crm = {
 
     sendMessage: async function (text) {
         if (!text) return;
-        const user = this.auth.currentUser;
+        const user = this.auth ? this.auth.currentUser : null;
         if (!user) return; // Should be logged in
 
         // Find user name from team or use email
         const teamMember = this.team.find(m => m.email === user.email);
-        const senderName = teamMember ? teamMember.name : user.email.split('@')[0];
+        const senderName = teamMember ? teamMember.name : (user.email ? user.email.split('@')[0] : 'User');
+
+        // MOCK MODE HANDLE
+        if (this.isMock) {
+            const msg = {
+                text: text,
+                sender: senderName,
+                senderId: user.uid,
+                timestamp: Date.now()
+            };
+            this.messages.push(msg);
+            this.saveLocalData();
+            this.renderMessages();
+
+            // Simulate Agent
+            if (window.location.hostname === 'localhost' || text.toLowerCase().includes('@ai')) {
+                setTimeout(async () => {
+                    const response = await this.mockAgentResponse(text);
+                    this.messages.push({
+                        text: response,
+                        sender: 'Wilco AI 🤖',
+                        senderId: 'ai_agent',
+                        timestamp: Date.now()
+                    });
+                    this.saveLocalData();
+                    this.renderMessages();
+                }, 1000);
+            }
+            return;
+        }
 
         try {
             // 1. Send User Message
@@ -1318,6 +1364,7 @@ const crm = {
 
             // 2. TRIGGER AI AGENT (Simulated for Demo)
             // In production, this would be a Cloud Function trigger or direct HTTP call
+            // We keep this for the "Live Firebase but Localhost" case
             if (window.location.hostname === 'localhost' || text.toLowerCase().includes('@ai')) {
                 setTimeout(async () => {
                     const response = await this.mockAgentResponse(text);
