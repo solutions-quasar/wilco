@@ -267,10 +267,16 @@ const crm = {
     setupEventListeners: function () {
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
             const rememberEmail = document.getElementById('remember-email') ? document.getElementById('remember-email').checked : false;
             const staySignedIn = document.getElementById('stay-signed-in') ? document.getElementById('stay-signed-in').checked : true;
+
+            // Strict Validation
+            if (!email || !password) {
+                alert("Please enter both email and password.");
+                return;
+            }
 
             // Handle "Remember Email"
             if (rememberEmail) {
@@ -280,7 +286,8 @@ const crm = {
             }
 
             if (this.isMock) {
-                const userEmail = email || "admin@wilco.com";
+                // Mock Login (Strict)
+                const userEmail = email;
                 this.showDashboard(userEmail);
                 this.renderAllViews();
             } else {
