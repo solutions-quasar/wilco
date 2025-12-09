@@ -1494,6 +1494,28 @@ const crm = {
         });
     },
 
+    renderKnowledge: function () {
+        const tbody = document.getElementById('knowledge-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        const items = this.knowledge || [];
+        items.forEach(k => {
+            const tr = document.createElement('tr');
+            tr.onclick = () => crm.openModal('knowledge', k.id);
+            tr.innerHTML = `
+                <td><strong>${k.title}</strong></td>
+                <td>${(k.content || '').substring(0, 50)}...</td>
+                <td class="action-cell" onclick="event.stopPropagation()">
+                     <div class="action-buttons">
+                        <button class="btn-text" onclick="crm.openModal('knowledge', '${k.id}')">Edit</button>
+                        <button class="btn-text danger" onclick="crm.deleteItem('knowledge', '${k.id}')">Delete</button>
+                     </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    },
+
     setupMessageListener: function () {
         if (!this.db) return;
 
