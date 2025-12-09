@@ -13,6 +13,7 @@ const crm = {
     products: [],
     clients: [],
     team: [], // New Team state
+    knowledge: [], // RAG Knowledge Base
     messages: [], // Chat messages
     activeMenuId: null,
     onboardingStep: 0,
@@ -381,6 +382,17 @@ const crm = {
             this.saveLocalData();
         }
 
+        const localKnowledge = localStorage.getItem('wilco_knowledge');
+        if (localKnowledge) this.knowledge = JSON.parse(localKnowledge);
+        else {
+            this.knowledge = [
+                { id: 'k_1', title: 'Water Heater Warranty', content: 'Standard warranty is 6 years on tank, 1 year on parts.' },
+                { id: 'k_2', title: 'Pilot Light Reset', content: 'Turn knob to Pilot, hold down for 60 seconds while lighting.' },
+                { id: 'k_3', title: 'Service Areas', content: 'We serve Downtown, West End, and North Shore.' }
+            ];
+            this.saveLocalData();
+        }
+
         const localMessages = localStorage.getItem('wilco_messages');
         if (localMessages) this.messages = JSON.parse(localMessages);
         else {
@@ -469,7 +481,9 @@ const crm = {
             const invoicesSnap = await this.db.collection('invoices').get();
             const productsSnap = await this.db.collection('products').get();
             const clientsSnap = await this.db.collection('clients').get();
+
             const teamSnap = await this.db.collection('team').get();
+            const knowledgeSnap = await this.db.collection('knowledge').get();
 
             // Check if DB is completely fresh/empty
             if (leadsSnap.empty && tasksSnap.empty && invoicesSnap.empty && productsSnap.empty && clientsSnap.empty && teamSnap.empty) {
@@ -483,7 +497,9 @@ const crm = {
             this.invoices = invoicesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             this.products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             this.clients = clientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
             this.team = teamSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.knowledge = knowledgeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             this.renderAllViews();
             console.log("Firestore Data Loaded");
