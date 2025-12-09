@@ -3,7 +3,7 @@ import * as admin from "firebase-admin";
 
 // Import Genkit & Plugins
 import { genkit } from "genkit";
-import { googleAI, gemini15Flash } from "@genkit-ai/googleai";
+import { googleAI, gemini10Pro } from "@genkit-ai/googleai";
 import { onCall } from "firebase-functions/v2/https";
 
 // Initialize Firebase Admin
@@ -13,7 +13,7 @@ const db = admin.firestore();
 // Initialize Genkit
 const ai = genkit({
     plugins: [googleAI()],
-    model: gemini15Flash,
+    model: gemini10Pro,
 });
 
 // --- DEFINE TOOLS ---
@@ -61,7 +61,7 @@ export const clientAgentFlow = ai.defineFlow(
         name: "clientAgentFlow",
         inputSchema: z.object({
             message: z.string(),
-            userId: z.string().optional(),
+            userId: z.string().nullable().optional(),
         }),
         outputSchema: z.object({ text: z.string() }),
     },
