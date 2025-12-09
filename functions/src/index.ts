@@ -53,6 +53,126 @@ const getProductPrice = ai.defineTool(
     }
 );
 
+const createQuote = ai.defineTool(
+    {
+        name: "createQuote",
+        description: "Creates a formal quote for the client.",
+        inputSchema: z.object({
+            items: z.array(z.object({ description: z.string(), price: z.number() })),
+            clientName: z.string().optional(),
+        }),
+        outputSchema: z.object({ quoteId: z.string(), total: z.number(), success: z.boolean() }),
+    },
+    async ({ items, clientName }) => {
+        const total = items.reduce((sum, item) => sum + item.price, 0);
+        const quoteRef = await db.collection("quotes").add({
+            items,
+            total,
+            clientName: clientName || "Valued Client",
+            status: "draft",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return { quoteId: quoteRef.id, total, success: true };
+    }
+);
+
+const listInvoices = ai.defineTool(
+    {
+        name: "listInvoices",
+        description: "Lists invoices, useful for checking unpaid bills.",
+        inputSchema: z.object({
+            status: z.enum(['paid', 'unpaid', 'overdue', 'all']).optional(),
+        }),
+        outputSchema: z.object({
+            invoices: z.array(z.object({ id: z.string(), amount: z.number(), status: z.string() })),
+            found: z.boolean(),
+        }),
+    },
+    async ({ status }) => {
+        let query: admin.firestore.Query = db.collection("invoices");
+        if (status && status !== 'all') {
+            query = query.where("status", "==", status);
+        }
+        const snapshot = await query.limit(5).get();
+        const invoices = snapshot.docs.map(doc => ({
+            id: doc.id,
+            amount: doc.data().amount || 0,
+            status: doc.data().status || 'unknown'
+        }));
+        return { invoices, found: invoices.length > 0 };
+    }
+);
+
+const bookAppointment = ai.defineTool(
+    {
+        name: "bookAppointment",
+        description: "Books a specific time slot for a client.",
+        inputSchema: z.object({
+            date: z.string().describe("YYYY-MM-DD"),
+            time: z.string().describe("HH:MM (24h)"),
+            serviceType: z.string(),
+            clientName: z.string().optional(),
+        }),
+        outputSchema: z.object({ success: z.boolean(), bookingId: z.string().optional(), message: z.string() }),
+    },
+    async ({ date, time, serviceType, clientName }) => {
+        const existing = await db.collection("schedule")
+            .where("date", "==", date)
+            .where("time", "==", time)
+            .get();
+
+        if (!existing.empty) {
+            return { success: false, message: "Slot already taken." };
+        }
+
+        const ref = await db.collection("schedule").add({
+            date,
+            time,
+            serviceType,
+            clientName: clientName || "Valued Client",
+            status: "booked",
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        return { success: true, bookingId: ref.id, message: "Appointment confirmed." };
+    }
+);
+
+const updateSchedule = ai.defineTool(
+    {
+        name: "updateSchedule",
+        description: "Admin tool to block off time or days. Use this to mark unavailability.",
+        inputSchema: z.object({
+            date: z.string().describe("YYYY-MM-DD"),
+            time: z.string().optional().describe("HH:MM. If omitted, blocks entire day."),
+            reason: z.string().optional(),
+            status: z.enum(['unavailable', 'holiday', 'training', 'open']),
+        }),
+        outputSchema: z.object({ success: z.boolean(), updatedSlots: z.number() }),
+    },
+    async ({ date, time, reason, status }) => {
+        const slotsToBlock = time ? [time] : ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00"];
+        const batch = db.batch();
+
+        for (const slot of slotsToBlock) {
+            const snapshot = await db.collection("schedule")
+                .where("date", "==", date)
+                .where("time", "==", slot)
+                .get();
+
+            if (snapshot.empty) {
+                const newDoc = db.collection("schedule").doc();
+                batch.set(newDoc, { date, time: slot, status, reason: reason || "Admin Blocked" });
+            } else {
+                snapshot.docs.forEach(doc => {
+                    batch.update(doc.ref, { status, reason: reason || "Admin Updated" });
+                });
+            }
+        }
+        await batch.commit();
+        return { success: true, updatedSlots: slotsToBlock.length };
+    }
+);
+
 // --- DEFINE FLOW ---
 
 // 1. Define the Genkit Flow logic
@@ -78,8 +198,10 @@ export const clientAgentFlow = ai.defineFlow(
             prompt: input.message,
             system: `${context} 
                Use the available tools to check schedule availability.
-               If quoting, give an estimate based on the product price.`,
-            tools: [checkAvailability, getProductPrice],
+               If the user asks for a quote, use the createQuote tool.
+               If the user wants to book, use 'bookAppointment' (CHECK AVAILABILITY FIRST).
+               If the user gives admin instructions (like "block off Tuesday"), use 'updateSchedule'.`,
+            tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule],
         });
 
         return { text: response.text };
