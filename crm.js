@@ -391,14 +391,21 @@ const crm = {
                 if (rememberEmail) localStorage.setItem('wilco_saved_email', email);
                 else localStorage.removeItem('wilco_saved_email');
 
+                console.log("Login Submit. Mock:", this.isMock, "Auth:", !!this.auth);
+
                 if (this.isMock) {
+                    console.log("Proceeding with Mock Login");
                     this.showDashboard(email);
                 } else if (this.auth) {
+                    console.log("Proceeding with Firebase Login");
                     this.auth.signInWithEmailAndPassword(email, password)
                         .catch((error) => {
                             console.error("Login Failed", error);
                             alert("Login Failed: " + error.message);
                         });
+                } else {
+                    console.error("Login State Error: Not Mock and No Auth");
+                    alert("System Error: Login service not initialized.");
                 }
             });
         }
