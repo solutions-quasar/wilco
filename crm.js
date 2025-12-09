@@ -1,6 +1,6 @@
 /**
  * Wilco CRM Logic
- * Handles Firebase connection, Sidebar Navigation, Local Storage Persistence, CRUD Modals, Date Navigation, Products, and Clients.
+ * Handles Firebase connection, Sidebar Navigation, Local Storage Persistence, CRUD Modals, Date Navigation, Products, Clients, and Team.
  */
 
 const crm = {
@@ -12,6 +12,7 @@ const crm = {
     schedule: [],
     products: [],
     clients: [],
+    team: [], // New Team state
     activeMenuId: null,
     currentViewDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
 
@@ -73,7 +74,6 @@ const crm = {
 
     startMockMode: function () {
         this.isMock = true;
-        // Banner removed per user request
         this.loadLocalData();
     },
 
@@ -83,6 +83,7 @@ const crm = {
         const localInvoices = localStorage.getItem('wilco_invoices');
         const localProducts = localStorage.getItem('wilco_products');
         const localClients = localStorage.getItem('wilco_clients');
+        const localTeam = localStorage.getItem('wilco_team');
 
         const today = new Date().toISOString().split('T')[0];
 
@@ -130,6 +131,15 @@ const crm = {
             this.saveLocalData();
         }
 
+        if (localTeam) this.team = JSON.parse(localTeam);
+        else {
+            this.team = [
+                { id: 'user_1', name: 'Lukas Wilson', role: 'Owner', email: 'admin@wilco.com', phone: '555-0001' },
+                { id: 'user_2', name: 'Mike Plumber', role: 'Technician', email: 'mike@wilco.com', phone: '555-0002' }
+            ];
+            this.saveLocalData();
+        }
+
         this.renderAllViews();
     },
 
@@ -140,6 +150,7 @@ const crm = {
         localStorage.setItem('wilco_invoices', JSON.stringify(this.invoices));
         localStorage.setItem('wilco_products', JSON.stringify(this.products));
         localStorage.setItem('wilco_clients', JSON.stringify(this.clients));
+        localStorage.setItem('wilco_team', JSON.stringify(this.team));
     },
 
     startFirebaseMode: function () {
@@ -195,9 +206,10 @@ const crm = {
             const invoicesSnap = await this.db.collection('invoices').get();
             const productsSnap = await this.db.collection('products').get();
             const clientsSnap = await this.db.collection('clients').get();
+            const teamSnap = await this.db.collection('team').get();
 
             // Check if DB is completely fresh/empty
-            if (leadsSnap.empty && tasksSnap.empty && invoicesSnap.empty && productsSnap.empty && clientsSnap.empty) {
+            if (leadsSnap.empty && tasksSnap.empty && invoicesSnap.empty && productsSnap.empty && clientsSnap.empty && teamSnap.empty) {
                 console.log("Database empty. Seeding defaults...");
                 await this.seedFirestoreData();
                 return; // seed function will reload data
@@ -208,6 +220,7 @@ const crm = {
             this.invoices = invoicesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             this.products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             this.clients = clientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.team = teamSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             this.renderAllViews();
             console.log("Firestore Data Loaded");
@@ -245,6 +258,10 @@ const crm = {
             { id: 'client_1', name: 'John Doe', email: 'john@example.com', phone: '555-0101', address: '456 Oak Ave' },
             { id: 'client_2', name: 'Sarah Smith', email: 'sarah@test.com', phone: '555-0102', address: '123 Maple St' }
         ];
+        const defaultTeam = [
+            { id: 'user_1', name: 'Lukas Wilson', role: 'Owner', email: 'admin@wilco.com', phone: '555-0001' },
+            { id: 'user_2', name: 'Mike Plumber', role: 'Technician', email: 'mike@wilco.com', phone: '555-0002' }
+        ];
 
         // Add to batch
         defaultLeads.forEach(item => batch.set(this.db.collection('leads').doc(item.id), item));
@@ -252,6 +269,7 @@ const crm = {
         defaultInvoices.forEach(item => batch.set(this.db.collection('invoices').doc(item.id), item));
         defaultProducts.forEach(item => batch.set(this.db.collection('products').doc(item.id), item));
         defaultClients.forEach(item => batch.set(this.db.collection('clients').doc(item.id), item));
+        defaultTeam.forEach(item => batch.set(this.db.collection('team').doc(item.id), item));
 
         try {
             await batch.commit();
@@ -379,6 +397,7 @@ const crm = {
             if (type === 'invoice') data = this.invoices.find(x => x.id == id);
             if (type === 'product') data = this.products.find(x => x.id == id);
             if (type === 'client') data = this.clients.find(x => x.id == id);
+            if (type === 'team') data = this.team.find(x => x.id == id);
         }
 
         if (type === 'lead') {
@@ -482,6 +501,33 @@ const crm = {
                 <div class="input-group">
                     <label>Address</label>
                     <input type="text" name="address" value="${data ? data.address : ''}">
+                </div>
+            `;
+        }
+
+        if (type === 'team') {
+            title.innerText = id ? 'Edit Member' : 'New Team Member';
+            container.innerHTML = `
+                <div class="input-group">
+                    <label>Full Name</label>
+                    <input type="text" name="name" value="${data ? data.name : ''}" required>
+                </div>
+                 <div class="input-group">
+                    <label>Role</label>
+                    <select name="role">
+                        <option value="Technician" ${data && data.role == 'Technician' ? 'selected' : ''}>Technician</option>
+                        <option value="Admin" ${data && data.role == 'Admin' ? 'selected' : ''}>Admin</option>
+                        <option value="Owner" ${data && data.role == 'Owner' ? 'selected' : ''}>Owner</option>
+                        <option value="Apprentice" ${data && data.role == 'Apprentice' ? 'selected' : ''}>Apprentice</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" name="email" value="${data ? data.email : ''}" required>
+                </div>
+                <div class="input-group">
+                    <label>Phone</label>
+                    <input type="text" name="phone" value="${data ? data.phone : ''}">
                 </div>
             `;
         }
@@ -653,6 +699,9 @@ const crm = {
         } else if (formType === 'client') {
             collectionName = 'clients';
             this.updateLocalArray('clients', newItem);
+        } else if (formType === 'team') {
+            collectionName = 'team';
+            this.updateLocalArray('team', newItem);
         }
 
         console.log(`Attempting to save [${formType}] to Firestore. ID: ${newItem.id}`, newItem);
@@ -713,6 +762,7 @@ const crm = {
                 if (type === 'invoice') collectionName = 'invoices';
                 if (type === 'product') collectionName = 'products';
                 if (type === 'client') collectionName = 'clients';
+                if (type === 'team') collectionName = 'team';
 
                 if (collectionName) {
                     await this.db.collection(collectionName).doc(id).delete();
@@ -731,6 +781,7 @@ const crm = {
         if (type === 'invoice') this.invoices = this.invoices.filter(x => x.id != id);
         if (type === 'product') this.products = this.products.filter(x => x.id != id);
         if (type === 'client') this.clients = this.clients.filter(x => x.id != id);
+        if (type === 'team') this.team = this.team.filter(x => x.id != id);
 
         this.saveLocalData();
         this.renderAllViews();
@@ -765,6 +816,7 @@ const crm = {
         this.renderInvoices();
         this.renderProducts();
         this.renderClients();
+        this.renderTeam();
     },
 
     renderLeads: function () {
@@ -899,6 +951,30 @@ const crm = {
                     <div id="menu-${c.id}" class="action-menu">
                         <button onclick="crm.openModal('client', '${c.id}')">Edit</button>
                         <button class="danger" onclick="crm.deleteItem('client', '${c.id}')">Delete</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    },
+
+    renderTeam: function () {
+        const tbody = document.getElementById('team-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        this.team.forEach(u => {
+            const tr = document.createElement('tr');
+            tr.onclick = () => crm.openModal('team', u.id); // Row click
+            tr.innerHTML = `
+                <td>${u.name}</td>
+                <td>${u.role}</td>
+                <td>${u.email}</td>
+                <td>${u.phone}</td>
+                <td class="action-cell" onclick="event.stopPropagation()">
+                    <button class="action-trigger" onclick="crm.toggleMenu('${u.id}', event)">⋮</button>
+                    <div id="menu-${u.id}" class="action-menu">
+                        <button onclick="crm.openModal('team', '${u.id}')">Edit</button>
+                        <button class="danger" onclick="crm.deleteItem('team', '${u.id}')">Delete</button>
                     </div>
                 </td>
             `;

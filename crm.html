@@ -80,6 +80,9 @@
                 <button class="nav-item" onclick="crm.switchView('clients')">
                     Clients
                 </button>
+                <button class="nav-item" onclick="crm.switchView('team')">
+                    Team
+                </button>
             </nav>
             <div class="sidebar-footer">
                 <div class="user-info">
@@ -224,6 +227,31 @@
                             </tr>
                         </thead>
                         <tbody id="clients-table-body">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: Team -->
+            <div id="view-team" class="view-section">
+                <header class="view-header">
+                    <h2>Team Management</h2>
+                    <button class="btn-crm small" onclick="crm.openModal('team')">+ Add Member</button>
+                </header>
+
+                <div class="data-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="team-table-body">
                             <!-- Rows injected via JS -->
                         </tbody>
                     </table>
