@@ -90,6 +90,7 @@ export const clientAgentFlow = ai.defineFlow(
 export const clientAgent = onCall(
     {
         cors: true, // Enable CORS for web client
+        secrets: ["GOOGLE_GENAI_API_KEY"], // <--- GRANT ACCESS TO THE KEY
     },
     async (request) => {
         // request.data contains the arguments passed from the client
