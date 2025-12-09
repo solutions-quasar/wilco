@@ -3,7 +3,7 @@ import * as admin from "firebase-admin";
 
 // Import Genkit & Plugins
 import { genkit } from "genkit";
-import { googleAI, gemini10Pro } from "@genkit-ai/googleai";
+import { vertexAI, gemini15Flash } from "@genkit-ai/vertexai";
 import { onCall } from "firebase-functions/v2/https";
 
 // Initialize Firebase Admin
@@ -12,8 +12,8 @@ const db = admin.firestore();
 
 // Initialize Genkit
 const ai = genkit({
-    plugins: [googleAI()],
-    model: gemini10Pro,
+    plugins: [vertexAI({ location: 'us-central1' })],
+    model: gemini15Flash,
 });
 
 // --- DEFINE TOOLS ---
@@ -90,7 +90,6 @@ export const clientAgentFlow = ai.defineFlow(
 export const clientAgent = onCall(
     {
         cors: true, // Enable CORS for web client
-        secrets: ["GOOGLE_GENAI_API_KEY"], // <--- GRANT ACCESS TO THE KEY
     },
     async (request) => {
         // request.data contains the arguments passed from the client
