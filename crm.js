@@ -16,10 +16,19 @@ const crm = {
     currentViewDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
 
     init: function () {
-        if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey === "YOUR_API_KEY") {
-            this.startMockMode();
-        } else {
+        if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== "YOUR_API_KEY") {
             this.startFirebaseMode();
+        } else {
+            this.startMockMode();
+        }
+
+        // Pre-fill email if remembered
+        const savedEmail = localStorage.getItem('wilco_saved_email');
+        if (savedEmail) {
+            const emailInput = document.getElementById('email');
+            const rememberCheckbox = document.getElementById('remember-email');
+            if (emailInput) emailInput.value = savedEmail;
+            if (rememberCheckbox) rememberCheckbox.checked = true;
         }
 
         this.setupEventListeners();
@@ -29,6 +38,60 @@ const crm = {
             if (!e.target.closest('.action-cell')) {
                 this.closeAllMenus();
             }
+        });
+    },
+
+    // ... (keep changeDate, setDate, startMockMode, loadLocalData, saveLocalData, startFirebaseMode as is) ...
+
+    setupEventListeners: function () {
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const rememberEmail = document.getElementById('remember-email').checked;
+            const staySignedIn = document.getElementById('stay-signed-in').checked;
+
+            // Handle "Remember Email"
+            if (rememberEmail) {
+                localStorage.setItem('wilco_saved_email', email);
+            } else {
+                localStorage.removeItem('wilco_saved_email');
+            }
+
+            if (this.isMock) {
+                // Mock Login
+                const userEmail = email || "admin@wilco.com";
+                this.showDashboard(userEmail);
+                this.renderAllViews();
+            } else {
+                // Firebase Login
+                try {
+                    const persistence = staySignedIn
+                        ? firebase.auth.Auth.Persistence.LOCAL
+                        : firebase.auth.Auth.Persistence.SESSION;
+
+                    await this.auth.setPersistence(persistence);
+                    await this.auth.signInWithEmailAndPassword(email, password);
+
+                    // onAuthStateChanged will handle the redirect
+                } catch (error) {
+                    console.error("Login Error:", error);
+                    alert("Login Failed: " + error.message);
+                }
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            if (!this.isMock && this.auth) {
+                this.auth.signOut().then(() => this.showLogin());
+            } else {
+                this.showLogin();
+            }
+        });
+
+        document.getElementById('modal-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveModalData();
         });
     },
 
@@ -257,18 +320,47 @@ const crm = {
     },
 
     setupEventListeners: function () {
-        document.getElementById('login-form').addEventListener('submit', (e) => {
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            let email = document.getElementById('email').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const rememberEmail = document.getElementById('remember-email') ? document.getElementById('remember-email').checked : false;
+            const staySignedIn = document.getElementById('stay-signed-in') ? document.getElementById('stay-signed-in').checked : true;
+
+            // Handle "Remember Email"
+            if (rememberEmail) {
+                localStorage.setItem('wilco_saved_email', email);
+            } else {
+                localStorage.removeItem('wilco_saved_email');
+            }
+
             if (this.isMock) {
-                if (!email) email = "admin@wilco.com";
-                this.showDashboard(email);
+                const userEmail = email || "admin@wilco.com";
+                this.showDashboard(userEmail);
                 this.renderAllViews();
+            } else {
+                // Firebase Login
+                try {
+                    const persistence = staySignedIn
+                        ? firebase.auth.Auth.Persistence.LOCAL
+                        : firebase.auth.Auth.Persistence.SESSION;
+
+                    await this.auth.setPersistence(persistence);
+                    await this.auth.signInWithEmailAndPassword(email, password);
+                    // onAuthStateChanged will handle the redirect
+                } catch (error) {
+                    console.error("Login Error:", error);
+                    alert("Login Failed: " + error.message);
+                }
             }
         });
 
         document.getElementById('logout-btn').addEventListener('click', () => {
-            this.showLogin();
+            if (!this.isMock && this.auth) {
+                this.auth.signOut().then(() => this.showLogin());
+            } else {
+                this.showLogin();
+            }
         });
 
         document.getElementById('modal-form').addEventListener('submit', (e) => {

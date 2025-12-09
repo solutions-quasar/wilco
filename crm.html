@@ -13,11 +13,6 @@
 
 <body>
 
-    <!-- Mock Mode Banner -->
-    <div id="mock-banner" class="mock-banner" style="display: none;">
-        DEMO MODE - Using Simulated Data (Not Connected to Database)
-    </div>
-
     <!-- Login Screen -->
     <div id="login-screen">
         <div class="login-card">
@@ -31,9 +26,20 @@
                     <label>Password</label>
                     <input type="password" id="password" placeholder="••••••••">
                 </div>
+
+                <div
+                    style="display: flex; gap: 1rem; margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="remember-email"> Remember Email
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="stay-signed-in" checked> Stay Logged In
+                    </label>
+                </div>
+
                 <button type="submit" class="btn-crm">Login to Dashboard</button>
             </form>
-            <p style="margin-top: 1rem; font-size: 0.8rem; color: #94a3b8;">
+            <p style="margin-top: 1rem; font-size: 0.8rem; color: #94a3b8; display: none;">
                 (Mock Mode: Just click Login!)
             </p>
         </div>
