@@ -25,6 +25,26 @@ const crm = {
     currentViewDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
 
     init: function () {
+        // Check for Magic Link callback
+        if (firebase.auth().isSignInWithEmailLink(window.location.href)) {
+            let email = window.localStorage.getItem('emailForSignIn');
+            if (!email) {
+                email = window.prompt('Please provide your email for confirmation');
+            }
+            firebase.auth().signInWithEmailLink(email, window.location.href)
+                .then((result) => {
+                    window.localStorage.removeItem('emailForSignIn');
+                    // Clean URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    this.startFirebaseMode(); // Proceed to app
+                })
+                .catch((error) => {
+                    console.error("Magic Link Error", error);
+                    alert("Login Link failed or expired.");
+                });
+            return; // Stop normal init
+        }
+
         if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== "YOUR_API_KEY") {
             this.startFirebaseMode();
         } else {
@@ -48,6 +68,55 @@ const crm = {
                 this.closeAllMenus();
             }
         });
+    },
+
+    // --- AUTH EXTENSIONS ---
+    openForgotModal: function () {
+        document.getElementById('forgot-overlay').classList.add('open');
+    },
+
+    resetPassword: function () {
+        const email = document.getElementById('reset-email').value;
+        if (!email) return alert("Please enter your email.");
+
+        if (this.isMock) {
+            alert("Mock Mode: Password reset email 'sent' to " + email);
+            document.getElementById('forgot-overlay').classList.remove('open');
+            return;
+        }
+
+        this.auth.sendPasswordResetEmail(email)
+            .then(() => {
+                alert("Password reset email sent!");
+                document.getElementById('forgot-overlay').classList.remove('open');
+            })
+            .catch((error) => {
+                alert("Error: " + error.message);
+            });
+    },
+
+    sendMagicLink: function () {
+        const email = document.getElementById('email').value;
+        if (!email) return alert("Please enter your email in the login box first.");
+
+        if (this.isMock) {
+            alert("Mock Mode: Magic Login Link 'sent' to " + email);
+            return;
+        }
+
+        const actionCodeSettings = {
+            url: window.location.href, // Return to this page
+            handleCodeInApp: true
+        };
+
+        this.auth.sendSignInLinkToEmail(email, actionCodeSettings)
+            .then(() => {
+                window.localStorage.setItem('emailForSignIn', email);
+                alert("Magic Link sent! Check your inbox.");
+            })
+            .catch((error) => {
+                alert("Error: " + error.message);
+            });
     },
 
     updateDateDisplay: function () {
