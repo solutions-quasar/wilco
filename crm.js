@@ -24,7 +24,18 @@ const crm = {
     ],
     currentViewDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
 
+    clientViewMode: 'list', // 'list' or 'grid'
+
     init: function () {
+        console.log("Initializing CRM...");
+
+        // Theme Init
+        if (localStorage.getItem('wilco_theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            const btn = document.getElementById('theme-toggle');
+            if (btn) btn.innerHTML = '☀️';
+        }
+
         // --- CRITICAL INIT STEP ---
         if (typeof firebase !== 'undefined' && typeof firebaseConfig !== 'undefined') {
             if (!firebase.apps.length) {
@@ -138,6 +149,132 @@ const crm = {
             .catch((error) => {
                 alert("Error: " + error.message);
             });
+    },
+
+    toggleTheme: function () {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('wilco_theme', isDark ? 'dark' : 'light');
+        const btn = document.getElementById('theme-toggle');
+        if (btn) btn.innerHTML = isDark ? '☀️' : '🌙';
+    },
+
+    setClientView: function (mode) {
+        this.clientViewMode = mode;
+        this.renderClients();
+    },
+
+    renderDashboard: function () {
+        const dash = document.getElementById('view-dashboard');
+        if (!dash || !dash.classList.contains('active')) return;
+
+        // Stats Calculation
+        const customers = this.clients.length;
+        const activeJobs = this.leads.filter(l => l.status === 'In Progress').length + this.schedule.length; // Approximate
+        const completedJobs = this.leads.filter(l => l.status === 'Closed').length;
+
+        // Revenue This Week (Mock logic based on current date)
+        // In real app, filter invoices by date within range
+        const revenue = this.invoices
+            .filter(i => i.status === 'Paid')
+            .reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
+
+        // Update Stats DOM
+        if (document.getElementById('stats-customers')) document.getElementById('stats-customers').innerText = customers;
+        if (document.getElementById('stats-revenue-week')) document.getElementById('stats-revenue-week').innerText = '$' + revenue.toFixed(0); // Simplified
+        if (document.getElementById('stats-active')) document.getElementById('stats-active').innerText = activeJobs;
+        if (document.getElementById('stats-completed')) document.getElementById('stats-completed').innerText = completedJobs;
+
+        // Render CHARTS
+        this.renderCharts();
+        this.renderRecentActivity();
+    },
+
+    renderCharts: function () {
+        // 1. Revenue Bar Chart (CSS-based)
+        const chartRev = document.getElementById('chart-revenue');
+        if (chartRev) {
+            chartRev.innerHTML = '';
+            // Generate mock data for last 7 days
+            const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+            days.forEach(day => {
+                const height = Math.floor(Math.random() * 80) + 10; // 10-90% height
+                const bar = document.createElement('div');
+                bar.style.height = `${height}%`;
+                bar.style.width = '12%';
+                bar.style.background = 'var(--accent)';
+                bar.style.borderRadius = '4px';
+                bar.style.position = 'relative';
+
+                // Tooltip/Label
+                const label = document.createElement('div');
+                label.innerText = day;
+                label.style.position = 'absolute';
+                label.style.bottom = '-20px';
+                label.style.width = '100%';
+                label.style.textAlign = 'center';
+                label.style.fontSize = '0.75rem';
+                label.style.color = 'var(--text-muted)';
+
+                bar.appendChild(label);
+                chartRev.appendChild(bar);
+            });
+        }
+
+        // 2. Job Status Donut Chart (Conic Gradient)
+        const chartStatus = document.getElementById('chart-status');
+        if (chartStatus) {
+            // Mock percentages
+            const active = 40;
+            const completed = 30;
+            const pending = 30;
+
+            // Conic Gradient for Donut
+            chartStatus.style.width = '160px';
+            chartStatus.style.height = '160px';
+            chartStatus.style.borderRadius = '50%';
+            chartStatus.style.background = `conic-gradient(
+                var(--accent) 0% ${active}%, 
+                var(--success) ${active}% ${active + completed}%, 
+                var(--warning) ${active + completed}% 100%
+            )`;
+
+            // Inner Circle for Donut hole
+            const inner = document.createElement('div');
+            inner.style.width = '110px';
+            inner.style.height = '110px';
+            inner.style.background = 'var(--bg-card)';
+            inner.style.borderRadius = '50%';
+            inner.style.position = 'absolute';
+            inner.style.display = 'flex';
+            inner.style.alignItems = 'center';
+            inner.style.justifyContent = 'center';
+            inner.style.fontSize = '1.5rem';
+            inner.style.fontWeight = 'bold';
+            inner.innerText = 'Total';
+
+            chartStatus.innerHTML = '';
+            chartStatus.appendChild(inner);
+        }
+    },
+
+    renderRecentActivity: function () {
+        const tbody = document.getElementById('dashboard-recent-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        // Take last 5 leads/jobs
+        const recent = this.leads.slice(0, 5);
+        recent.forEach(job => {
+            const tr = document.createElement('tr');
+            tr.onclick = () => crm.openModal('lead', job.id);
+            tr.innerHTML = `
+                <td><strong>${job.service}</strong><br><small style="color:var(--text-muted)">${job.name}</small></td>
+                <td><span class="badge ${job.status === 'Closed' ? 'badge-closed' : 'badge-pending'}">${job.status}</span></td>
+                <td>$${Math.floor(Math.random() * 500) + 150}</td>
+             `;
+            tbody.appendChild(tr);
+        });
     },
 
     updateDateDisplay: function () {
@@ -929,7 +1066,7 @@ const crm = {
 
     renderAllViews: function () {
         this.renderLeads();
-        this.updateStats();
+        this.renderDashboard(); // Updated from updateStats
         this.renderSchedule();
         this.renderInvoices();
         this.renderProducts();
@@ -1048,25 +1185,81 @@ const crm = {
     },
 
     renderClients: function () {
-        const tbody = document.getElementById('clients-table-body');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        this.clients.forEach(c => {
-            const tr = document.createElement('tr');
-            tr.onclick = () => crm.openModal('client', c.id); // Row click
-            tr.innerHTML = `
-                <td>${c.name}</td>
-                <td>${c.email}</td>
-                <td>${c.phone}</td>
-                <td class="action-cell" onclick="event.stopPropagation()">
+        const container = document.getElementById('view-clients').querySelector('.data-table-container');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        if (this.clientViewMode === 'grid') {
+            const grid = document.createElement('div');
+            grid.className = 'clients-grid';
+
+            this.clients.forEach(c => {
+                const card = document.createElement('div');
+                card.className = 'client-card';
+                card.onclick = () => crm.openModal('client', c.id);
+
+                card.innerHTML = `
+                <div class="client-card-header">
+                    <div class="client-avatar">${c.name.charAt(0)}</div>
                     <div class="action-buttons">
-                        <button class="btn-text" onclick="crm.openModal('client', '${c.id}')">Edit</button>
-                        <button class="btn-text danger" onclick="crm.deleteItem('client', '${c.id}')">Delete</button>
+                        <button class="btn-text" onclick="event.stopPropagation(); crm.openModal('client', '${c.id}')">Edit</button>
                     </div>
-                </td>
+                </div>
+                <div class="client-info">
+                     <h3 style="margin-bottom:0.5rem;">${c.name}</h3>
+                     <p>📧 ${c.email}</p>
+                     <p>📞 ${c.phone}</p>
+                </div>
+                <div class="client-stats">
+                    <div class="stat-item">
+                        <span>Jobs</span>
+                        <strong>${Math.floor(Math.random() * 10)}</strong>
+                    </div>
+                    <div class="stat-item">
+                         <span>Spent</span>
+                         <strong>$${Math.floor(Math.random() * 5000)}</strong>
+                    </div>
+                </div>
+               `;
+                grid.appendChild(card);
+            });
+            container.appendChild(grid);
+
+        } else {
+            // Default List View
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="clients-table-body"></tbody>
             `;
-            tbody.appendChild(tr);
-        });
+            container.appendChild(table);
+            const tbody = table.querySelector('tbody');
+
+            this.clients.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => crm.openModal('client', c.id); // Row click
+                tr.innerHTML = `
+                    <td>${c.name}</td>
+                    <td>${c.email}</td>
+                    <td>${c.phone}</td>
+                    <td class="action-cell" onclick="event.stopPropagation()">
+                        <div class="action-buttons">
+                            <button class="btn-text" onclick="crm.openModal('client', '${c.id}')">Edit</button>
+                            <button class="btn-text danger" onclick="crm.deleteItem('client', '${c.id}')">Delete</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
     },
 
     renderTeam: function () {
