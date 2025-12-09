@@ -25,8 +25,17 @@ const crm = {
     currentViewDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
 
     init: function () {
+        // --- CRITICAL INIT STEP ---
+        if (typeof firebase !== 'undefined' && typeof firebaseConfig !== 'undefined') {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log("Firebase App Initialized in init()");
+            }
+        }
+
         // Check for Magic Link callback
-        if (firebase.auth().isSignInWithEmailLink(window.location.href)) {
+        // Now safe because app is initialized
+        if (typeof firebase !== 'undefined' && firebase.auth().isSignInWithEmailLink(window.location.href)) {
             let email = window.localStorage.getItem('emailForSignIn');
             if (!email) {
                 email = window.prompt('Please provide your email for confirmation');
