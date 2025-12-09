@@ -9,6 +9,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="crm.css">
+
+    <!-- Favicon & Social -->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.png">
+    <meta property="og:title" content="Wilco Plumbing CRM">
+    <meta property="og:description" content="Professional Plumbing Management System">
+    <meta property="og:image" content="assets/social_share.jpg">
+    <meta property="og:url" content="https://solutions-quasar.github.io/wilco/">
 </head>
 
 <body>
@@ -82,6 +89,9 @@
                 </button>
                 <button class="nav-item" onclick="crm.switchView('team')">
                     Team
+                </button>
+                <button class="nav-item" onclick="crm.switchView('messages')">
+                    Messages
                 </button>
             </nav>
             <div class="sidebar-footer">
@@ -255,6 +265,28 @@
                             <!-- Rows injected via JS -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- VIEW: Messages -->
+            <div id="view-messages" class="view-section"
+                style="height: calc(100vh - 100px); display: none; flex-direction: column;">
+                <header class="view-header" style="margin-bottom: 1rem;">
+                    <h2>Team Chat</h2>
+                </header>
+
+                <div class="chat-container">
+                    <div id="chat-messages" class="chat-messages">
+                        <!-- Messages Injected Here -->
+                        <div class="message system">
+                            <p>Welcome to the Team Chat!</p>
+                        </div>
+                    </div>
+                    <form id="chat-form" class="chat-input-area">
+                        <input type="text" id="message-input" placeholder="Type a message..." required
+                            autocomplete="off">
+                        <button type="submit" class="btn-crm">Send</button>
+                    </form>
                 </div>
             </div>
 
