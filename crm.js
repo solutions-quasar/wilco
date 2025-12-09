@@ -1308,16 +1308,44 @@ const crm = {
         const senderName = teamMember ? teamMember.name : user.email.split('@')[0];
 
         try {
+            // 1. Send User Message
             await this.db.collection('messages').add({
                 text: text,
                 sender: senderName,
                 senderId: user.uid,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp() // Server time
             });
+
+            // 2. TRIGGER AI AGENT (Simulated for Demo)
+            // In production, this would be a Cloud Function trigger or direct HTTP call
+            if (window.location.hostname === 'localhost' || text.toLowerCase().includes('@ai')) {
+                setTimeout(async () => {
+                    const response = await this.mockAgentResponse(text);
+                    await this.db.collection('messages').add({
+                        text: response,
+                        sender: 'Wilco AI 🤖',
+                        senderId: 'ai_agent',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }, 1500);
+            }
+
         } catch (error) {
             console.error("Error sending message:", error);
             alert("Failed to send message: " + error.message);
         }
+    },
+
+    // Mock Agent Logic (Mirroring the Genkit Flow)
+    mockAgentResponse: async function (input) {
+        input = input.toLowerCase();
+        if (input.includes('price') || input.includes('cost')) {
+            return "I can check pricing for you. A standard water heater installation starts at $1,200. Would you like a formal quote?";
+        }
+        if (input.includes('schedule') || input.includes('time') || input.includes('book')) {
+            return "I've checked the schedule. We have an opening tomorrow at 2:00 PM. Should I book it?";
+        }
+        return "I'm the AI assistant. I can help with Quotes and Scheduling. How can I facilitate?";
     },
 
     renderMessages: function () {
