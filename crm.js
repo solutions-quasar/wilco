@@ -1397,8 +1397,16 @@ const crm = {
                     message: text,
                     userId: (this.clients.find(c => c.email === user.email)?.id) || undefined
                 }).then(async (result) => {
+                    console.log("AI Agent Raw Result:", result); // Debug log
+
                     // Remove temp "Thinking..." message
                     this.messages = this.messages.filter(m => m.id !== tempId);
+                    this.renderMessages(); // Force clear immediately
+
+                    if (!result || !result.data || !result.data.text) {
+                        console.error("Invalid AI response:", result);
+                        return;
+                    }
 
                     // Save Real Response to Firestore
                     await this.db.collection('messages').add({
