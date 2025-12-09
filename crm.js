@@ -628,9 +628,8 @@ const crm = {
         document.getElementById('modal-overlay').classList.remove('open');
     },
 
-    saveModalData: function () {
+    saveModalData: async function () {
         const form = document.getElementById('modal-form');
-        // Manual scraping because FormData can be finicky in pure JS simple implementations
         const id = document.getElementById('modal-id').value;
         const formType = document.getElementById('modal-type').value;
 
@@ -659,53 +658,60 @@ const crm = {
             });
             newItem.items = items;
 
-            // Map Client ID to Name for display
+            // Map Client ID to Name
             const client = this.clients.find(c => c.id === newItem.clientId);
             if (client) newItem.client = client.name;
         }
 
-        // Logic by type
+        // Logic by type & Collection Mapping
+        let collectionName = '';
         if (formType === 'lead') {
             if (!newItem.date) newItem.date = new Date().toISOString().split('T')[0];
-            if (id) {
-                const index = this.leads.findIndex(x => x.id == id);
-                if (index !== -1) this.leads[index] = { ...this.leads[index], ...newItem };
-            } else {
-                this.leads.unshift(newItem);
-            }
+            collectionName = 'leads';
+            this.updateLocalArray('leads', newItem);
         } else if (formType === 'task') {
-            if (id) {
-                const index = this.schedule.findIndex(x => x.id == id);
-                if (index !== -1) this.schedule[index] = { ...this.schedule[index], ...newItem };
-            } else {
-                this.schedule.push(newItem);
-            }
+            collectionName = 'tasks';
+            this.updateLocalArray('schedule', newItem);
         } else if (formType === 'invoice') {
-            if (id) {
-                const index = this.invoices.findIndex(x => x.id == id);
-                if (index !== -1) this.invoices[index] = { ...this.invoices[index], ...newItem };
-            } else {
-                this.invoices.unshift(newItem);
-            }
+            collectionName = 'invoices';
+            this.updateLocalArray('invoices', newItem);
         } else if (formType === 'product') {
-            if (id) {
-                const index = this.products.findIndex(x => x.id == id);
-                if (index !== -1) this.products[index] = { ...this.products[index], ...newItem };
-            } else {
-                this.products.push(newItem);
-            }
+            collectionName = 'products';
+            this.updateLocalArray('products', newItem);
         } else if (formType === 'client') {
-            if (id) {
-                const index = this.clients.findIndex(x => x.id == id);
-                if (index !== -1) this.clients[index] = { ...this.clients[index], ...newItem };
-            } else {
-                this.clients.push(newItem);
+            collectionName = 'clients';
+            this.updateLocalArray('clients', newItem);
+        }
+
+        // Firestore Write
+        if (!this.isMock && collectionName) {
+            try {
+                await this.db.collection(collectionName).doc(newItem.id).set(newItem);
+                console.log(`Saved to Firestore: ${collectionName}/${newItem.id}`);
+            } catch (error) {
+                console.error("Firestore Save Error:", error);
+                alert("Error Saving Data: " + error.message);
+                return; // Stop if save failed
             }
         }
 
         this.saveLocalData();
         this.renderAllViews();
         this.closeModal();
+    },
+
+    updateLocalArray: function (arrayName, newItem) {
+        const index = this[arrayName].findIndex(x => x.id == newItem.id);
+        if (index !== -1) {
+            this[arrayName][index] = { ...this[arrayName][index], ...newItem };
+        } else {
+            // Add to beginning for invoices/leads, end for others logic preserved
+            if (arrayName === 'leads' || arrayName === 'invoices') {
+                this[arrayName].unshift(newItem);
+            } else {
+                this[arrayName].push(newItem);
+            }
+        }
     },
 
     // --- QUICK ACTIONS ---
@@ -721,8 +727,31 @@ const crm = {
         document.querySelectorAll('.action-menu').forEach(el => el.classList.remove('show'));
     },
 
-    deleteItem: function (type, id) {
+    deleteItem: async function (type, id) {
         if (!confirm("Delete this item?")) return;
+
+        // Firestore Delete
+        if (!this.isMock) {
+            try {
+                let collectionName = '';
+                if (type === 'lead') collectionName = 'leads';
+                if (type === 'task') collectionName = 'tasks';
+                if (type === 'invoice') collectionName = 'invoices';
+                if (type === 'product') collectionName = 'products';
+                if (type === 'client') collectionName = 'clients';
+
+                if (collectionName) {
+                    await this.db.collection(collectionName).doc(id).delete();
+                    console.log(`Deleted from Firestore: ${collectionName}/${id}`);
+                }
+            } catch (error) {
+                console.error("Firestore Delete Error:", error);
+                alert("Delete Failed: " + error.message);
+                return;
+            }
+        }
+
+        // Local Update
         if (type === 'lead') this.leads = this.leads.filter(x => x.id != id);
         if (type === 'task') this.schedule = this.schedule.filter(x => x.id != id);
         if (type === 'invoice') this.invoices = this.invoices.filter(x => x.id != id);
@@ -733,7 +762,18 @@ const crm = {
         this.renderAllViews();
     },
 
-    archiveItem: function (type, id) {
+    archiveItem: async function (type, id) {
+        // Firestore Update
+        if (!this.isMock && type === 'lead') {
+            try {
+                await this.db.collection('leads').doc(id).update({ status: 'Archived' });
+            } catch (error) {
+                console.error("Firestore Archive Error:", error);
+                alert("Archive Failed: " + error.message);
+                return;
+            }
+        }
+
         if (type === 'lead') {
             const item = this.leads.find(x => x.id == id);
             if (item) item.status = 'Archived';
