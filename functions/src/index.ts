@@ -3,7 +3,7 @@ import * as admin from "firebase-admin";
 
 // Import Genkit & Plugins
 import { genkit } from "genkit";
-import { vertexAI, gemini15Flash } from "@genkit-ai/vertexai";
+import { vertexAI } from "@genkit-ai/vertexai";
 import { onCall } from "firebase-functions/v2/https";
 
 // Initialize Firebase Admin
@@ -13,7 +13,7 @@ const db = admin.firestore();
 // Initialize Genkit
 const ai = genkit({
     plugins: [vertexAI({ location: 'us-central1' })],
-    model: gemini15Flash,
+    model: 'vertexai/gemini-2.0-flash-lite-001',
 });
 
 // --- DEFINE TOOLS ---
