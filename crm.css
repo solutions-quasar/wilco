@@ -151,6 +151,16 @@ body {
     box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
 }
 
+/* Login Options (Checkboxes) */
+.login-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
 /* Brass Button Style */
 .login-card button.btn-crm {
     width: 100%;
