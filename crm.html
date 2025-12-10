@@ -150,7 +150,7 @@
                     <i class='bx bx-hard-hat nav-icon'></i> Team
                 </button>
                 <button class="nav-btn" onclick="crm.switchView('ailogs')">
-                    <i class='bx bx-brain nav-icon'></i> AI Logs
+                    <i class='bx bx-list-ul nav-icon'></i> Audit Logs
                 </button>
                 <button class="nav-btn" onclick="crm.switchView('settings')">
                     <i class='bx bx-cog nav-icon'></i> Settings
@@ -272,19 +272,14 @@
             <!-- VIEW: AI Logs -->
             <div id="view-ailogs" class="view-section">
                 <header class="view-header">
-                    <div>
-                        <h2>AI Audit Logs</h2>
-                        <p style="color: var(--text-muted);">History of AI automated actions and decisions.</p>
-                    </div>
-                    <div class="header-actions">
-                        <button class="btn-crm small" onclick="crm.renderAILogs()">Refresh Logs</button>
-                    </div>
+                    <h2>System Audit Logs</h2>
                 </header>
                 <div class="data-table-container">
                     <table>
                         <thead>
                             <tr>
                                 <th>Time</th>
+                                <th>Source</th>
                                 <th>Action</th>
                                 <th>Details</th>
                                 <th>Status</th>
