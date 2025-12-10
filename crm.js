@@ -1551,6 +1551,15 @@ const crm = {
     // --- AUDIO HANDLING ---
     mediaRecorder: null,
     audioChunks: [],
+    isRecording: false,
+
+    toggleRecording: async function () {
+        if (this.isRecording) {
+            this.stopRecording();
+        } else {
+            this.startRecording();
+        }
+    },
 
     startRecording: async function () {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -1568,17 +1577,35 @@ const crm = {
                     const reader = new FileReader();
                     reader.readAsDataURL(audioBlob);
                     reader.onloadend = () => {
-                        const base64String = reader.result.split(',')[1]; // Remove data:audio/webm;base64,
+                        const base64String = reader.result.split(',')[1];
                         this.sendMessage(null, base64String);
                     };
+
+                    // UI Reset
                     document.getElementById('mic-btn').classList.remove('recording-pulse');
-                    // Stop all tracks to release mic
+                    const icon = document.querySelector('#mic-btn i');
+                    if (icon) {
+                        icon.className = 'bx bx-microphone';
+                        icon.parentElement.style.color = 'var(--text-muted)';
+                    }
+                    this.isRecording = false;
+
+                    // Release mic
                     stream.getTracks().forEach(track => track.stop());
                 };
 
                 this.mediaRecorder.start();
+                this.isRecording = true;
+
+                // UI Update
                 document.getElementById('mic-btn').classList.add('recording-pulse');
+                const icon = document.querySelector('#mic-btn i');
+                if (icon) {
+                    icon.className = 'bx bx-stop-circle';
+                    icon.parentElement.style.color = 'var(--danger)';
+                }
                 console.log("Recording started...");
+
             } catch (err) {
                 console.error("Mic Access Error:", err);
                 alert("Could not access microphone.");
@@ -1586,7 +1613,10 @@ const crm = {
         } else {
             console.warn("Audio API not supported.");
             // Mock behavior
+            this.isRecording = true;
             document.getElementById('mic-btn').classList.add('recording-pulse');
+            const icon = document.querySelector('#mic-btn i');
+            if (icon) icon.className = 'bx bx-stop-circle';
         }
     },
 
@@ -1596,7 +1626,13 @@ const crm = {
             console.log("Recording stopped.");
         } else {
             // Mock stop
+            this.isRecording = false;
             document.getElementById('mic-btn').classList.remove('recording-pulse');
+            const icon = document.querySelector('#mic-btn i');
+            if (icon) {
+                icon.className = 'bx bx-microphone';
+                icon.parentElement.style.color = 'var(--text-muted)';
+            }
             if (this.isMock) this.sendMessage("This is a simulated voice command.", null);
         }
     },
