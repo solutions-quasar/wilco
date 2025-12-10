@@ -13,8 +13,10 @@ const crm = {
     products: [],
     clients: [],
     team: [], // New Team state
+    team: [], // New Team state
     knowledge: [], // RAG Knowledge Base
     messages: [], // Chat messages
+    aiLogs: [], // AI Audit Logs
     activeMenuId: null,
     onboardingStep: 0,
     onboardingSteps: [
@@ -1576,7 +1578,40 @@ const crm = {
                 console.error(`Error syncing [${col}]:`, error);
             });
         });
+
+        // Separate listener for AI Logs (Sorted by Timestamp)
+        this.db.collection('ai_audit_logs').orderBy('timestamp', 'desc').limit(50)
+            .onSnapshot(snapshot => {
+                this.aiLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                this.renderAILogs();
+            });
     },
+
+    renderAILogs: function () {
+        const tbody = document.getElementById('ai-logs-list');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (this.aiLogs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No AI actions recorded yet.</td></tr>';
+            return;
+        }
+
+        this.aiLogs.forEach(log => {
+            const date = log.timestamp ? new Date(log.timestamp.seconds * 1000).toLocaleString() : 'Just now';
+            const statusClass = log.status === 'success' ? 'status-paid' : 'status-overdue'; // Reuse existing classes
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${date}</td>
+                <td><strong>${log.action}</strong></td>
+                <td><pre style="font-size: 0.8rem; margin: 0; white-space: pre-wrap;">${JSON.stringify(log.details, null, 2)}</pre></td>
+                <td><span class="status-badge ${statusClass}">${log.status}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    },
+
 
     // --- CHAT LOGIC ---
     filterMessagesByOwner: true,

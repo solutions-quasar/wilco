@@ -18,6 +18,20 @@ const ai = genkit({
 
 // --- DEFINE TOOLS ---
 
+// --- HELPER: Audit Logging ---
+async function logAIAction(action: string, details: any, status: 'success' | 'failed') {
+    try {
+        await db.collection("ai_audit_logs").add({
+            action,
+            details,
+            status,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (err) {
+        console.error("Failed to log AI action:", err);
+    }
+}
+
 const checkAvailability = ai.defineTool(
     {
         name: "checkAvailability",
@@ -72,6 +86,8 @@ const createQuote = ai.defineTool(
             status: "draft",
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+
+        await logAIAction("createQuote", { quoteId: quoteRef.id, clientName, total }, "success");
         return { quoteId: quoteRef.id, total, success: true };
     }
 );
@@ -112,16 +128,19 @@ const bookAppointment = ai.defineTool(
             time: z.string().describe("HH:MM (24h)"),
             serviceType: z.string(),
             clientName: z.string().optional(),
+            address: z.string().describe("Client's full address (Required)"),
+            details: z.string().optional().describe("Additional job details")
         }),
         outputSchema: z.object({ success: z.boolean(), bookingId: z.string().optional(), message: z.string() }),
     },
-    async ({ date, time, serviceType, clientName }) => {
+    async ({ date, time, serviceType, clientName, address, details }) => {
         const existing = await db.collection("schedule")
             .where("date", "==", date)
             .where("time", "==", time)
             .get();
 
         if (!existing.empty) {
+            await logAIAction("bookAppointment", { date, time, reason: "Slot Taken" }, "failed");
             return { success: false, message: "Slot already taken." };
         }
 
@@ -130,9 +149,13 @@ const bookAppointment = ai.defineTool(
             time,
             serviceType,
             clientName: clientName || "Valued Client",
+            address,
+            details: details || "",
             status: "booked",
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
+
+        await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date, time }, "success");
         return { success: true, bookingId: ref.id, message: "Appointment confirmed." };
     }
 );
@@ -169,7 +192,68 @@ const updateSchedule = ai.defineTool(
             }
         }
         await batch.commit();
+        await logAIAction("updateSchedule", { date, time, status }, "success");
         return { success: true, updatedSlots: slotsToBlock.length };
+    }
+);
+
+const createClient = ai.defineTool(
+    {
+        name: "createClient",
+        description: "Creates a new client record in the CRM.",
+        inputSchema: z.object({
+            name: z.string(),
+            email: z.string().email(),
+            phone: z.string().optional(),
+            address: z.string().optional()
+        }),
+        outputSchema: z.object({ success: z.boolean(), clientId: z.string(), message: z.string() }),
+    },
+    async ({ name, email, phone, address }) => {
+        // Check if exists
+        const snapshot = await db.collection("clients").where("email", "==", email).get();
+        if (!snapshot.empty) {
+            return { success: false, clientId: snapshot.docs[0].id, message: "Client with this email already exists." };
+        }
+
+        const ref = await db.collection("clients").add({
+            name,
+            email,
+            phone: phone || "",
+            address: address || "",
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        await logAIAction("createClient", { clientId: ref.id, name, email }, "success");
+        return { success: true, clientId: ref.id, message: "Client created successfully." };
+    }
+);
+
+const updateClient = ai.defineTool(
+    {
+        name: "updateClient",
+        description: "Updates an existing client's information.",
+        inputSchema: z.object({
+            email: z.string().describe("The email to identify the client"),
+            fieldsToUpdate: z.object({
+                phone: z.string().optional(),
+                address: z.string().optional(),
+                name: z.string().optional()
+            }).describe("Fields to update")
+        }),
+        outputSchema: z.object({ success: z.boolean(), message: z.string() }),
+    },
+    async ({ email, fieldsToUpdate }) => {
+        const snapshot = await db.collection("clients").where("email", "==", email).get();
+        if (snapshot.empty) {
+            return { success: false, message: "Client not found." };
+        }
+
+        const doc = snapshot.docs[0];
+        await doc.ref.update(fieldsToUpdate);
+
+        await logAIAction("updateClient", { clientId: doc.id, updatedFields: fieldsToUpdate }, "success");
+        return { success: true, message: "Client updated successfully." };
     }
 );
 
@@ -297,7 +381,7 @@ export const clientAgentFlow = ai.defineFlow(
 
                If the user asks a general question (e.g., "Find me a plumber" or "I have a leak"), politely explain you can help book an appointment or check availability. Do not refuse to answer; instead, guide them to your tools.
                `,
-            tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule, searchKnowledgeBase],
+            tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule, createClient, updateClient, searchKnowledgeBase],
         });
 
         // Debugging metadata
