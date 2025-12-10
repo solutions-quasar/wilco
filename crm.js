@@ -1556,6 +1556,28 @@ const crm = {
         });
     },
 
+    setupRealtimeListeners: function () {
+        if (!this.db || !this.auth.currentUser) return;
+        console.log("Setting up Realtime Listeners for CRM Data...");
+
+        const collections = ['leads', 'tasks', 'invoices', 'products', 'clients', 'team', 'knowledge'];
+
+        collections.forEach(col => {
+            this.db.collection(col).onSnapshot(snapshot => {
+                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // Map 'tasks' collection to 'schedule' state
+                const stateName = (col === 'tasks') ? 'schedule' : col;
+                this[stateName] = items;
+
+                console.log(`Synced [${col}]: ${items.length} items.`);
+                this.renderAllViews();
+            }, error => {
+                console.error(`Error syncing [${col}]:`, error);
+            });
+        });
+    },
+
     // --- CHAT LOGIC ---
     filterMessagesByOwner: true,
     messageListenerUnsubscribe: null,
@@ -1765,10 +1787,10 @@ const crm = {
             if (text || audioBase64) {
                 const clientAgent = firebase.functions().httpsCallable('clientAgent');
 
-                // Show "Typing..." indicator (Optimistic UI)
+                // Show "Typing..." indicator (Optimistic UI) - NOW WITH ANIMATION
                 const tempId = 'ai_typing_' + Date.now();
                 this.messages.push({
-                    text: audioBase64 ? "Processing Audio..." : "Thinking...",
+                    type: 'typing', // Special type for animation
                     sender: "Wilco AI 🤖",
                     senderId: "ai_agent",
                     timestamp: Date.now(),
@@ -1795,10 +1817,10 @@ const crm = {
 
                     // Remove temp "Thinking..." message
                     this.messages = this.messages.filter(m => m.id !== tempId);
-                    this.renderMessages();
 
                     if (!result || !result.data || !result.data.text) {
                         console.error("Invalid AI response:", result);
+                        this.renderMessages(); // Re-render to remove typing
                         return;
                     }
 
@@ -1810,6 +1832,8 @@ const crm = {
                         ownerId: user.uid,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
+
+                    // Note: Listener will pick up the new message and trigger re-render
                 }).catch(error => {
                     console.error("AI Agent Error:", error);
                     this.messages = this.messages.filter(m => m.id !== tempId);
@@ -1851,16 +1875,26 @@ const crm = {
         }
 
         this.messages.forEach(msg => {
-            if (!msg.text || (typeof msg.text === 'string' && !msg.text.trim())) return;
+            if (!msg.type && (!msg.text || (typeof msg.text === 'string' && !msg.text.trim()))) return;
 
             const div = document.createElement('div');
             const isSelf = (this.auth && this.auth.currentUser && msg.senderId === this.auth.currentUser.uid);
 
-            div.className = `message ${isSelf ? 'self' : 'other'}`;
-            div.innerHTML = `
-                <span class="sender-name">${msg.sender}</span>
-                ${msg.text}
-            `;
+            if (msg.type === 'typing') {
+                div.className = `message typing`;
+                div.innerHTML = `
+                    <span class="sender-name">${msg.sender}</span>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                `;
+            } else {
+                div.className = `message ${isSelf ? 'self' : 'other'}`;
+                div.innerHTML = `
+                    <span class="sender-name">${msg.sender}</span>
+                    ${msg.text}
+                `;
+            }
             container.appendChild(div);
         });
 
