@@ -168,12 +168,14 @@ const bookAppointment = ai.defineTool(
             time: z.string().describe("HH:MM (24h)"),
             serviceType: z.string(),
             clientName: z.string().describe("Full name of the client. REQUIRED."),
+            phone: z.string().optional().describe("Client's phone number"),
+            email: z.string().email().optional().or(z.literal("")).describe("Client's email"),
             address: z.string().optional().describe("Client's full address"),
             details: z.string().optional().describe("Additional job details")
         }),
         outputSchema: z.object({ success: z.boolean(), bookingId: z.string().optional(), message: z.string() }),
     },
-    async ({ date, time, serviceType, clientName, address, details }) => {
+    async ({ date, time, serviceType, clientName, phone, email, address, details }) => {
         // Normalize Date/Time
         const normDate = date.split('-').map(p => p.padStart(2, '0')).join('-'); // Ensure 2025-01-01
         const normTime = time.split(':').map(p => p.padStart(2, '0')).join(':'); // Ensure 09:00
@@ -210,8 +212,8 @@ const bookAppointment = ai.defineTool(
                     const newClientRef = await db.collection("clients").add({
                         name: clientName,
                         address: address || "",
-                        email: "",
-                        phone: "",
+                        email: email || "",
+                        phone: phone || "",
                         status: "New",
                         createdAt: admin.firestore.FieldValue.serverTimestamp()
                     });
