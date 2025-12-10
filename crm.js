@@ -1552,10 +1552,12 @@ const crm = {
     mediaRecorder: null,
     audioChunks: [],
     isRecording: false,
+    isPaused: false,
+    audioBlob: null, // Store blob for preview
 
     toggleRecording: async function () {
         if (this.isRecording) {
-            this.stopRecording();
+            this.finishRecording();
         } else {
             this.startRecording();
         }
@@ -1573,22 +1575,32 @@ const crm = {
                 };
 
                 this.mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = () => {
-                        const base64String = reader.result.split(',')[1];
-                        this.sendMessage(null, base64String);
-                    };
+                    // Create Blob and Preview
+                    this.audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(this.audioBlob);
 
-                    // UI Reset
+                    // Show Preview UI
+                    const previewContainer = document.getElementById('audio-preview-container');
+                    const audioPlayer = document.getElementById('audio-player');
+
+                    if (previewContainer && audioPlayer) {
+                        wrapper = document.querySelector('.chat-input-area');
+                        if (wrapper) wrapper.style.display = 'none'; // Hide text input while reviewing
+
+                        previewContainer.style.display = 'flex';
+                        audioPlayer.src = audioUrl;
+                    }
+
+                    // Reset Mic UI
                     document.getElementById('mic-btn').classList.remove('recording-pulse');
                     const icon = document.querySelector('#mic-btn i');
                     if (icon) {
                         icon.className = 'bx bx-microphone';
                         icon.parentElement.style.color = 'var(--text-muted)';
+                        icon.parentElement.title = "Click to Record";
                     }
                     this.isRecording = false;
+                    this.isPaused = false;
 
                     // Release mic
                     stream.getTracks().forEach(track => track.stop());
@@ -1596,6 +1608,7 @@ const crm = {
 
                 this.mediaRecorder.start();
                 this.isRecording = true;
+                this.isPaused = false;
 
                 // UI Update
                 document.getElementById('mic-btn').classList.add('recording-pulse');
@@ -1603,6 +1616,7 @@ const crm = {
                 if (icon) {
                     icon.className = 'bx bx-stop-circle';
                     icon.parentElement.style.color = 'var(--danger)';
+                    icon.parentElement.title = "Click to Stop & Review";
                 }
                 console.log("Recording started...");
 
@@ -1612,35 +1626,46 @@ const crm = {
             }
         } else {
             console.warn("Audio API not supported.");
-            // Mock behavior
-            this.isRecording = true;
-            document.getElementById('mic-btn').classList.add('recording-pulse');
-            const icon = document.querySelector('#mic-btn i');
-            if (icon) icon.className = 'bx bx-stop-circle';
+            alert("Audio recording not supported in this browser.");
         }
     },
 
-    stopRecording: function () {
+    finishRecording: function () {
         if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
             this.mediaRecorder.stop();
-            console.log("Recording stopped.");
-        } else {
-            // Mock stop
-            this.isRecording = false;
-            document.getElementById('mic-btn').classList.remove('recording-pulse');
-            const icon = document.querySelector('#mic-btn i');
-            if (icon) {
-                icon.className = 'bx bx-microphone';
-                icon.parentElement.style.color = 'var(--text-muted)';
-            }
-            if (this.isMock) this.sendMessage("This is a simulated voice command.", null);
+            console.log("Recording stopped for review.");
         }
     },
+
+    discardAudio: function () {
+        this.audioBlob = null;
+        document.getElementById('audio-preview-container').style.display = 'none';
+        document.querySelector('.chat-input-area').style.display = 'flex'; // Show input again
+    },
+
+    sendAudio: function () {
+        if (!this.audioBlob) return;
+
+        const reader = new FileReader();
+        reader.readAsDataURL(this.audioBlob);
+        reader.onloadend = () => {
+            const base64String = reader.result.split(',')[1];
+            this.sendMessage(null, base64String);
+            this.discardAudio(); // Cleanup UI
+        };
+    },
+
+    // Optional: Pause/Resume logic could be added here if we add a Pause button UI
+
 
     sendMessage: async function (text, audioBase64 = null) {
         if (!text && !audioBase64) return;
         const user = this.auth ? this.auth.currentUser : null;
-        if (!user) return; // Should be logged in
+        if (!user) {
+            console.error("sendMessage: No user logged in");
+            alert("You must be logged in to send messages.");
+            return;
+        }
 
         // Find user name from team or use email
         const teamMember = this.team.find(m => m.email === user.email);
@@ -1689,7 +1714,7 @@ const crm = {
                 // Show "Typing..." indicator (Optimistic UI)
                 const tempId = 'ai_typing_' + Date.now();
                 this.messages.push({
-                    text: "Listening...",
+                    text: audioBase64 ? "Processing Audio..." : "Thinking...",
                     sender: "Wilco AI 🤖",
                     senderId: "ai_agent",
                     timestamp: Date.now(),

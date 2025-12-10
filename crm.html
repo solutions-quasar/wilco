@@ -472,6 +472,16 @@
                 <p>Hello! I can help you with Quotes, Scheduling, and searching the Knowledge Base. How can I help?</p>
             </div>
         </div>
+        <div id="audio-preview-container"
+            style="display:none; padding: 0.5rem; background: var(--bg-card); border-top: 1px solid var(--border); align-items: center; gap: 0.5rem;">
+            <audio id="audio-player" controls style="flex:1; height: 30px;"></audio>
+            <button class="btn-icon" onclick="crm.discardAudio()" title="Discard" style="color:var(--danger);">
+                <i class='bx bx-trash'></i>
+            </button>
+            <button class="btn-icon" onclick="crm.sendAudio()" title="Send Audio" style="color:var(--success);">
+                <i class='bx bx-send'></i>
+            </button>
+        </div>
         <div class="chat-input-area">
             <input type="text" id="message-input" placeholder="Hold Mic to speak..." autocomplete="off"
                 onkeypress="if(event.key === 'Enter') { crm.sendMessage(this.value); this.value = ''; }">
