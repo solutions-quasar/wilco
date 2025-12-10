@@ -190,19 +190,41 @@ const bookAppointment = ai.defineTool(
             return { success: false, message: "Slot already taken." };
         }
 
+        // 1. Create Appointment (Fix field name mismatch: clientName -> client)
         const ref = await db.collection("schedule").add({
             date: normDate,
             time: normTime,
             serviceType,
-            clientName: clientName || "Valued Client",
+            client: clientName || "Valued Client", // Fixed: 'client' matches crm.js
+            title: `${serviceType} - ${clientName || 'Client'}`, // Add title for Calendar View
             address: address || "No Address Provided",
             details: details || "",
             status: "booked",
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
+        // 2. Auto-Create Client if not exists
+        if (clientName) {
+            try {
+                const clientQuery = await db.collection("clients").where("name", "==", clientName).limit(1).get();
+                if (clientQuery.empty) {
+                    await db.collection("clients").add({
+                        name: clientName,
+                        address: address || "",
+                        email: "", // AI didn't capture email, leave empty
+                        phone: "",
+                        status: "New",
+                        createdAt: admin.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.log(`Auto-created new client: ${clientName}`);
+                }
+            } catch (err) {
+                console.error("Error auto-creating client:", err);
+            }
+        }
+
         await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date: normDate, time: normTime }, "success");
-        return { success: true, bookingId: ref.id, message: "Appointment confirmed." };
+        return { success: true, bookingId: ref.id, message: "Appointment confirmed and Client profile checked." };
     }
 
         await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date, time }, "success");
