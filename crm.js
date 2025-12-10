@@ -660,6 +660,9 @@ const crm = {
 
         if (!container || !modal) return;
 
+        // Normalize types
+        if (type === 'appointment') type = 'task';
+
         container.innerHTML = '';
         idField.value = id || '';
         typeField.value = type;
