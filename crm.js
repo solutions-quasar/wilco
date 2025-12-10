@@ -1546,8 +1546,61 @@ const crm = {
             });
     },
 
-    sendMessage: async function (text) {
-        if (!text) return;
+    // --- AUDIO HANDLING ---
+    mediaRecorder: null,
+    audioChunks: [],
+
+    startRecording: async function () {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                this.mediaRecorder = new MediaRecorder(stream);
+                this.audioChunks = [];
+
+                this.mediaRecorder.ondataavailable = event => {
+                    this.audioChunks.push(event.data);
+                };
+
+                this.mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = () => {
+                        const base64String = reader.result.split(',')[1]; // Remove data:audio/webm;base64,
+                        this.sendMessage(null, base64String);
+                    };
+                    document.getElementById('mic-btn').classList.remove('recording-pulse');
+                    // Stop all tracks to release mic
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                this.mediaRecorder.start();
+                document.getElementById('mic-btn').classList.add('recording-pulse');
+                console.log("Recording started...");
+            } catch (err) {
+                console.error("Mic Access Error:", err);
+                alert("Could not access microphone.");
+            }
+        } else {
+            console.warn("Audio API not supported.");
+            // Mock behavior
+            document.getElementById('mic-btn').classList.add('recording-pulse');
+        }
+    },
+
+    stopRecording: function () {
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            this.mediaRecorder.stop();
+            console.log("Recording stopped.");
+        } else {
+            // Mock stop
+            document.getElementById('mic-btn').classList.remove('recording-pulse');
+            if (this.isMock) this.sendMessage("This is a simulated voice command.", null);
+        }
+    },
+
+    sendMessage: async function (text, audioBase64 = null) {
+        if (!text && !audioBase64) return;
         const user = this.auth ? this.auth.currentUser : null;
         if (!user) return; // Should be logged in
 
@@ -1555,70 +1608,76 @@ const crm = {
         const teamMember = this.team.find(m => m.email === user.email);
         const senderName = teamMember ? teamMember.name : (user.email ? user.email.split('@')[0] : 'User');
 
+        const messageData = {
+            text: text || "🎤 [Audio Message]", // Fallback text for UI
+            sender: senderName,
+            senderId: user.uid,
+            timestamp: Date.now()
+        };
+
         // MOCK MODE HANDLE
         if (this.isMock) {
-            const msg = {
-                text: text,
-                sender: senderName,
-                senderId: user.uid,
-                timestamp: Date.now()
-            };
-            this.messages.push(msg);
-            this.saveLocalData();
+            this.messages.push(messageData);
             this.renderMessages();
 
-            // Simulate Agent
-            if (window.location.hostname === 'localhost' || text.toLowerCase().includes('@ai')) {
-                setTimeout(async () => {
-                    const response = await this.mockAgentResponse(text);
-                    this.messages.push({
-                        text: response,
-                        sender: 'Wilco AI 🤖',
-                        senderId: 'ai_agent',
-                        timestamp: Date.now()
-                    });
-                    this.saveLocalData();
-                    this.renderMessages();
-                }, 1000);
-            }
+            // Simulate AI thinking
+            setTimeout(() => {
+                this.messages.push({
+                    text: this.mockAgentResponse(text || "audio"), // Simple mock response
+                    sender: "Wilco AI 🤖",
+                    senderId: "ai_agent",
+                    timestamp: Date.now()
+                });
+                this.saveLocalData();
+                this.renderMessages();
+            }, 1000);
             return;
         }
 
         try {
-            // 1. Send User Message
+            // 1. Send User Message (Firestore)
+            // Note: We don't save the full audio to Firestore messages collection to save space, just text/placeholder.
             await this.db.collection('messages').add({
-                text: text,
-                sender: senderName,
-                senderId: user.uid,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp() // Server time
+                ...messageData,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
 
             // 2. TRIGGER AI AGENT (Real Cloud Function)
-            // Only trigger if message starts with @ai or we are testing
-            if (text.toLowerCase().includes('@ai')) {
+            // Trigger if @ai OR if Audio is sent (Implicitly an AI command)
+            if ((text && text.toLowerCase().includes('@ai')) || audioBase64) {
                 const clientAgent = firebase.functions().httpsCallable('clientAgent');
 
                 // Show "Typing..." indicator (Optimistic UI)
                 const tempId = 'ai_typing_' + Date.now();
                 this.messages.push({
-                    text: "Thinking...",
+                    text: "Listening...",
                     sender: "Wilco AI 🤖",
                     senderId: "ai_agent",
-                    timestamp: Date.now(), // Local time for sorting
+                    timestamp: Date.now(),
                     isTemp: true,
                     id: tempId
                 });
+                // Ensure messages render immediately so user sees "Listening..."
                 this.renderMessages();
 
-                clientAgent({
-                    message: text,
+                const payload = {
                     userId: (this.clients.find(c => c.email === user.email)?.id) || undefined
-                }).then(async (result) => {
-                    console.log("AI Agent Raw Result:", result); // Debug log
+                };
+
+                if (text) payload.message = text;
+                if (audioBase64) {
+                    payload.audio = {
+                        data: audioBase64,
+                        mimeType: 'audio/webm'
+                    };
+                }
+
+                clientAgent(payload).then(async (result) => {
+                    console.log("AI Agent Raw Result:", result);
 
                     // Remove temp "Thinking..." message
                     this.messages = this.messages.filter(m => m.id !== tempId);
-                    this.renderMessages(); // Force clear immediately
+                    this.renderMessages();
 
                     if (!result || !result.data || !result.data.text) {
                         console.error("Invalid AI response:", result);
@@ -1635,7 +1694,7 @@ const crm = {
                 }).catch(error => {
                     console.error("AI Agent Error:", error);
                     this.messages = this.messages.filter(m => m.id !== tempId);
-                    this.renderMessages(); // Clear typing indicator
+                    this.renderMessages();
                     alert("AI Agent Failed: " + error.message);
                 });
             }

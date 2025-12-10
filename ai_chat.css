@@ -119,3 +119,25 @@
     opacity: 0.7;
     margin-bottom: 2px;
 }
+
+/* Microphone Recording State */
+.recording-pulse {
+    animation: pulse-red 1.5s infinite;
+    background-color: rgba(239, 68, 68, 0.1);
+    border-radius: 50%;
+    color: var(--danger) !important;
+}
+
+@keyframes pulse-red {
+    0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}

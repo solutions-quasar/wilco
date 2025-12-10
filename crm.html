@@ -473,8 +473,13 @@
             </div>
         </div>
         <div class="chat-input-area">
-            <input type="text" id="message-input" placeholder="Ask about warranties, or 'Book a job'..."
+            <input type="text" id="message-input" placeholder="Hold Mic to speak..." autocomplete="off"
                 onkeypress="if(event.key === 'Enter') { crm.sendMessage(this.value); this.value = ''; }">
+            <button class="btn-icon" id="mic-btn" style="color:var(--danger);" onmousedown="crm.startRecording()"
+                onmouseup="crm.stopRecording()" onmouseleave="crm.stopRecording()" ontouchstart="crm.startRecording()"
+                ontouchend="crm.stopRecording()" title="Hold to Record">
+                <i class='bx bx-microphone'></i>
+            </button>
             <button class="btn-icon"
                 onclick="const el = document.getElementById('message-input'); crm.sendMessage(el.value); el.value='';">
                 <i class='bx bx-send'></i>

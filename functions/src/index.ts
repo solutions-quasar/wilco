@@ -219,7 +219,11 @@ export const clientAgentFlow = ai.defineFlow(
     {
         name: "clientAgentFlow",
         inputSchema: z.object({
-            message: z.string(),
+            message: z.string().optional(),
+            audio: z.object({
+                data: z.string(), // Base64
+                mimeType: z.string()
+            }).optional(),
             userId: z.string().nullable().optional(),
         }),
         outputSchema: z.object({ text: z.string() }),
@@ -233,8 +237,22 @@ export const clientAgentFlow = ai.defineFlow(
             }
         }
 
+        // Construct Multimodal Prompt
+        let prompt: any[] = [];
+        if (input.message) prompt.push({ text: input.message });
+        if (input.audio) {
+            prompt.push({
+                media: {
+                    url: `data:${input.audio.mimeType};base64,${input.audio.data}`
+                }
+            });
+        }
+
+        // Fallback if empty (shouldn't happen with UI checks)
+        if (prompt.length === 0) prompt.push({ text: "Hello" });
+
         const response = await ai.generate({
-            prompt: input.message,
+            prompt: prompt,
             system: `${context} 
                You are a smart, helpful AI assistant for 'Wilco Plumbing'.
                IMPORTANT: You MUST reply in the same language as the user's last message (e.g. French -> French, English -> English).
