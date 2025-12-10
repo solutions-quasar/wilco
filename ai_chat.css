@@ -77,6 +77,45 @@
     padding: 1rem;
     border-top: 1px solid var(--border);
     background: var(--bg-main);
-    display: flex;
     gap: 0.5rem;
+}
+
+/* Chat Message Styles */
+.message {
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    max-width: 85%;
+    word-wrap: break-word;
+}
+
+.message.other {
+    background: var(--bg-main);
+    color: var(--text-main);
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+}
+
+.message.self {
+    background: var(--accent);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+}
+
+.message.system {
+    align-self: center;
+    background: rgba(var(--accent-rgb), 0.1);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-align: center;
+    max-width: 90%;
+}
+
+.sender-name {
+    display: block;
+    font-size: 0.7rem;
+    opacity: 0.7;
+    margin-bottom: 2px;
 }
