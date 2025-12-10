@@ -1534,10 +1534,11 @@ const crm = {
     },
 
     setupMessageListener: function () {
-        if (!this.db) return;
+        if (!this.db || !this.auth.currentUser) return;
 
-        // Listen to messages (Show latest 50)
+        // Listen to messages (Show latest 50 for THIS user)
         this.db.collection('messages')
+            .where('ownerId', '==', this.auth.currentUser.uid)
             .orderBy('timestamp', 'desc')
             .limit(50)
             .onSnapshot((snapshot) => {
@@ -1640,6 +1641,7 @@ const crm = {
             // Note: We don't save the full audio to Firestore messages collection to save space, just text/placeholder.
             await this.db.collection('messages').add({
                 ...messageData,
+                ownerId: user.uid,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
 
@@ -1690,6 +1692,7 @@ const crm = {
                         text: result.data.text,
                         sender: 'Wilco AI 🤖',
                         senderId: 'ai_agent',
+                        ownerId: user.uid,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 }).catch(error => {
