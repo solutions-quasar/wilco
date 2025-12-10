@@ -1568,6 +1568,11 @@ const crm = {
                 const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 this.messages = loaded.reverse(); // Reverse to show oldest first in UI
                 this.renderMessages();
+            }, (error) => {
+                console.error("Message Listener Error:", error);
+                if (error.message.includes("index")) {
+                    alert("System Notice: A required database index is missing. Please check the console for the creation link.");
+                }
             });
     },
 
