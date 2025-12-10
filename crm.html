@@ -465,7 +465,14 @@
     <div id="ai-chat-window" class="ai-chat-window">
         <div class="chat-header">
             <h3 style="margin:0; font-size:1.1rem;">Wilco AI Assistant 🤖</h3>
-            <button class="close-btn" onclick="crm.toggleChat()">×</button>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <label style="font-size:0.7rem; display:flex; align-items:center; gap:4px; cursor:pointer;"
+                    title="Uncheck to see ALL messages in system">
+                    <input type="checkbox" id="chat-filter-toggle" checked
+                        onchange="crm.toggleMessageFilter(this.checked)"> My Msgs
+                </label>
+                <button class="close-btn" onclick="crm.toggleChat()">×</button>
+            </div>
         </div>
         <div id="chat-messages" class="chat-messages">
             <div class="message system">

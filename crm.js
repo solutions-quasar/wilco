@@ -1556,24 +1556,50 @@ const crm = {
         });
     },
 
+    // --- CHAT LOGIC ---
+    filterMessagesByOwner: true,
+    messageListenerUnsubscribe: null,
+
+    toggleMessageFilter: function (isChecked) {
+        this.filterMessagesByOwner = isChecked;
+        console.log("Toggling Message Filter. My Messages Only:", this.filterMessagesByOwner);
+        this.setupMessageListener(); // Re-run listener
+    },
+
     setupMessageListener: function () {
         if (!this.db || !this.auth.currentUser) return;
 
-        // Listen to messages (Show latest 50 for THIS user)
-        this.db.collection('messages')
-            .where('ownerId', '==', this.auth.currentUser.uid)
-            .orderBy('timestamp', 'desc')
-            .limit(50)
-            .onSnapshot((snapshot) => {
-                const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                this.messages = loaded.reverse(); // Reverse to show oldest first in UI
-                this.renderMessages();
-            }, (error) => {
-                console.error("Message Listener Error:", error);
-                if (error.message.includes("index")) {
-                    alert("System Notice: A required database index is missing. Please check the console for the creation link.");
-                }
-            });
+        // Unsubscribe previous listener if exists
+        if (this.messageListenerUnsubscribe) {
+            console.log("Unsubscribing from previous message listener...");
+            this.messageListenerUnsubscribe();
+            this.messageListenerUnsubscribe = null;
+        }
+
+        const uid = this.auth.currentUser.uid;
+        console.log(`Setting up Message Listener. User: ${uid}, FilterMyMsgs: ${this.filterMessagesByOwner}`);
+
+        let query = this.db.collection('messages');
+
+        if (this.filterMessagesByOwner) {
+            query = query.where('ownerId', '==', uid);
+        }
+
+        // Apply ordering and limit
+        // Note: If filtering by ownerId, you might need a composite index on [ownerId, timestamp]
+        query = query.orderBy('timestamp', 'desc').limit(50);
+
+        this.messageListenerUnsubscribe = query.onSnapshot((snapshot) => {
+            console.log("Message Snapshot received. Docs:", snapshot.size);
+            const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.messages = loaded.reverse(); // Reverse to show oldest first in UI
+            this.renderMessages();
+        }, (error) => {
+            console.error("Message Listener Error:", error);
+            if (error.message.includes("index")) {
+                alert("System Notice: A required database index is missing. Check console for link.");
+            }
+        });
     },
 
     // --- AUDIO HANDLING ---
