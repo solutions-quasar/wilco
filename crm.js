@@ -449,7 +449,9 @@ const crm = {
                             if (user) {
                                 console.log("User detected:", user.email);
                                 this.showDashboard(user.email);
-                                this.loadFirestoreData();
+                                this.loadSettings(); // Load User Settings
+                                // this.loadFirestoreData(); // Replace with Realtime
+                                this.setupRealtimeListeners(); // Realtime Sync
                                 this.setupMessageListener(); // Listen for chat
                                 if (typeof this.startOnboarding === 'function') {
                                     this.startOnboarding();
@@ -469,7 +471,12 @@ const crm = {
                     console.error("Auth Persistence Error:", error);
                     // Fallback to basic listener if persistence fails
                     this.auth.onAuthStateChanged(user => {
-                        if (user) { this.showDashboard(user.email); this.loadFirestoreData(); }
+                        if (user) {
+                            this.showDashboard(user.email);
+                            this.loadSettings();
+                            this.setupRealtimeListeners();
+                            // this.loadFirestoreData();
+                        }
                         else { this.showLogin(); }
                     });
                 });
@@ -1916,29 +1923,6 @@ loadSettings: function () {
                     cb.checked = this.settings.workDays.includes(parseInt(cb.value));
                 });
             }
-        }
-    });
-},
-
-startFirebaseMode: function () {
-    console.log("Starting Firebase Mode...");
-    this.db = firebase.firestore();
-    this.auth = firebase.auth();
-    this.storage = firebase.storage();
-
-    // Auth Listener
-    this.auth.onAuthStateChanged((user) => {
-        if (user) {
-            console.log("User Logged In:", user.email, user.uid);
-            document.getElementById('login-screen').style.display = 'none';
-            this.showDashboard(user.email);
-
-            // Initialize Listeners
-            this.setupRealtimeListeners();
-            this.setupMessageListener(); // Call this only after auth is confirmed
-        } else {
-            console.log("User Logged Out");
-            this.showLogin();
         }
     });
 },
