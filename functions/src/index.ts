@@ -167,7 +167,7 @@ const bookAppointment = ai.defineTool(
             date: z.string().describe("YYYY-MM-DD"),
             time: z.string().describe("HH:MM (24h)"),
             serviceType: z.string(),
-            clientName: z.string().optional(),
+            clientName: z.string().describe("Full name of the client. REQUIRED."),
             address: z.string().optional().describe("Client's full address"),
             details: z.string().optional().describe("Additional job details")
         }),
@@ -178,7 +178,11 @@ const bookAppointment = ai.defineTool(
         const normDate = date.split('-').map(p => p.padStart(2, '0')).join('-'); // Ensure 2025-01-01
         const normTime = time.split(':').map(p => p.padStart(2, '0')).join(':'); // Ensure 09:00
 
-        console.log(`Tool: bookAppointment called for ${normDate} ${normTime}`);
+        // Sanitize 'undefined' strings from AI
+        if (clientName === 'undefined' || clientName === 'null') clientName = "Valued Client";
+        if (serviceType === 'undefined' || serviceType === 'null') serviceType = "Service";
+
+        console.log(`Tool: bookAppointment called for ${normDate} ${normTime}, Client: ${clientName}`);
 
         const existing = await db.collection("schedule")
             .where("date", "==", normDate)
@@ -192,9 +196,9 @@ const bookAppointment = ai.defineTool(
 
         // 1. Resolve Client (Find or Create)
         let resolvedClientId = "";
-        let finalClientName = clientName || "Valued Client";
+        let finalClientName = clientName;
 
-        if (clientName) {
+        if (clientName && clientName !== "Valued Client") {
             try {
                 // Check if exists
                 const clientQuery = await db.collection("clients").where("name", "==", clientName).limit(1).get();
