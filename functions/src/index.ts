@@ -214,7 +214,11 @@ const searchKnowledgeBase = ai.defineTool(
 
 // --- DEFINE FLOW ---
 
-// 1. Define the Genkit Flow logic
+const messageSchema = z.object({
+    role: z.enum(['user', 'model', 'system']),
+    content: z.array(z.object({ text: z.string().optional() }))
+});
+
 export const clientAgentFlow = ai.defineFlow(
     {
         name: "clientAgentFlow",
@@ -225,6 +229,7 @@ export const clientAgentFlow = ai.defineFlow(
                 mimeType: z.string()
             }).optional(),
             userId: z.string().nullable().optional(),
+            history: z.array(messageSchema).optional()
         }),
         outputSchema: z.object({ text: z.string() }),
     },
@@ -236,6 +241,8 @@ export const clientAgentFlow = ai.defineFlow(
                 context += ` You are speaking with ${userDoc.data()?.name}.`;
             }
         }
+
+        const today = new Date().toISOString().split('T')[0];
 
         // Construct Multimodal Prompt
         let prompt: any[] = [];
@@ -251,9 +258,25 @@ export const clientAgentFlow = ai.defineFlow(
         // Fallback if empty (shouldn't happen with UI checks)
         if (prompt.length === 0) prompt.push({ text: "Hello" });
 
+        // Format History as Text to avoid Type Issues
+        let historyText = "";
+        if (input.history && input.history.length > 0) {
+            historyText = "\n\n--- CONVERSATION HISTORY ---\n";
+            input.history.forEach(msg => {
+                const role = msg.role === 'user' ? "USER" : "AI AGENT";
+                const text = msg.content && msg.content[0] ? msg.content[0].text : "";
+                if (text) historyText += `${role}: ${text}\n`;
+            });
+            historyText += "--- END HISTORY ---\n";
+        }
+
         const response = await ai.generate({
             prompt: prompt,
             system: `${context} 
+               Current Date: ${today} (YYYY-MM-DD). Use this for all date calculations (today, tomorrow, next Monday, etc.).
+
+               ${historyText}
+
                You are a smart, helpful AI assistant for 'Wilco Plumbing'.
                IMPORTANT: You MUST reply in the same language as the user's last message (e.g. French -> French, English -> English).
                

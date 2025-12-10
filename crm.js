@@ -1800,8 +1800,18 @@ const crm = {
                 // Ensure messages render immediately so user sees "Listening..."
                 this.renderMessages();
 
+                // Prepare History (Last 10 messages)
+                const history = this.messages
+                    .filter(m => !m.isTemp && m.text) // Filter out temp/empty
+                    .slice(-10) // Last 10
+                    .map(m => ({
+                        role: m.senderId === 'ai_agent' ? 'model' : 'user',
+                        content: [{ text: m.text }] // Genkit format
+                    }));
+
                 const payload = {
-                    userId: (this.clients.find(c => c.email === user.email)?.id) || undefined
+                    userId: (this.clients.find(c => c.email === user.email)?.id) || undefined,
+                    history: history
                 };
 
                 if (text) payload.message = text;
