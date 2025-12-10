@@ -168,35 +168,45 @@ const bookAppointment = ai.defineTool(
             time: z.string().describe("HH:MM (24h)"),
             serviceType: z.string(),
             clientName: z.string().optional(),
-            address: z.string().describe("Client's full address (Required)"),
+            address: z.string().optional().describe("Client's full address"),
             details: z.string().optional().describe("Additional job details")
         }),
         outputSchema: z.object({ success: z.boolean(), bookingId: z.string().optional(), message: z.string() }),
     },
     async ({ date, time, serviceType, clientName, address, details }) => {
+        // Normalize Date/Time
+        const normDate = date.split('-').map(p => p.padStart(2, '0')).join('-'); // Ensure 2025-01-01
+        const normTime = time.split(':').map(p => p.padStart(2, '0')).join(':'); // Ensure 09:00
+
+        console.log(`Tool: bookAppointment called for ${normDate} ${normTime}`);
+
         const existing = await db.collection("schedule")
-            .where("date", "==", date)
-            .where("time", "==", time)
+            .where("date", "==", normDate)
+            .where("time", "==", normTime)
             .get();
 
         if (!existing.empty) {
-            await logAIAction("bookAppointment", { date, time, reason: "Slot Taken" }, "failed");
+            await logAIAction("bookAppointment", { date: normDate, time: normTime, reason: "Slot Taken" }, "failed");
             return { success: false, message: "Slot already taken." };
         }
 
         const ref = await db.collection("schedule").add({
-            date,
-            time,
+            date: normDate,
+            time: normTime,
             serviceType,
             clientName: clientName || "Valued Client",
-            address,
+            address: address || "No Address Provided",
             details: details || "",
             status: "booked",
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date, time }, "success");
+        await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date: normDate, time: normTime }, "success");
         return { success: true, bookingId: ref.id, message: "Appointment confirmed." };
+    }
+
+        await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date, time }, "success");
+return { success: true, bookingId: ref.id, message: "Appointment confirmed." };
     }
 );
 
