@@ -1803,7 +1803,15 @@ const crm = {
     },
 
     saveSettings: function () {
-        if (!this.db || !this.auth.currentUser) return;
+        console.log("Attempting to save settings...");
+        if (!this.db) {
+            alert("Error: Database not initialized.");
+            return;
+        }
+        if (!this.auth.currentUser) {
+            alert("Error: You must be logged in to save settings.");
+            return;
+        }
 
         const defaultView = document.getElementById('setting-default-view').value;
         // Collect checked checkboxes for workDays
@@ -1813,11 +1821,19 @@ const crm = {
 
         this.settings = { defaultView, workDays, startTime, endTime };
 
+        console.log("Saving settings payload:", this.settings);
+
         this.db.collection('users').doc(this.auth.currentUser.uid).set({
             settings: this.settings
         }, { merge: true })
-            .then(() => alert("Settings Saved!"))
-            .catch(err => console.error("Error saving settings:", err));
+            .then(() => {
+                console.log("Settings write success.");
+                alert("Settings Saved Successfully!");
+            })
+            .catch(err => {
+                console.error("Error saving settings:", err);
+                alert("Error saving settings: " + err.message);
+            });
     },
 
     loadSettings: function () {
