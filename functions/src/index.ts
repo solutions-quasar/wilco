@@ -229,13 +229,18 @@ export const clientAgentFlow = ai.defineFlow(
                 mimeType: z.string()
             }).optional(),
             userId: z.string().nullable().optional(),
+            userName: z.string().optional(), // New field
             history: z.array(messageSchema).optional()
         }),
         outputSchema: z.object({ text: z.string() }),
     },
     async (input) => {
         let context = "You are a helpful assistant for 'Wilco Plumbing'.";
-        if (input.userId) {
+
+        // Priority: Direct Name > Database Lookup
+        if (input.userName) {
+            context += ` You are speaking with ${input.userName}.`;
+        } else if (input.userId) {
             const userDoc = await db.collection("clients").doc(input.userId).get();
             if (userDoc.exists) {
                 context += ` You are speaking with ${userDoc.data()?.name}.`;

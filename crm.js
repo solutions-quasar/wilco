@@ -1814,8 +1814,20 @@ const crm = {
                         content: [{ text: m.text }] // Genkit format
                     }));
 
+                // Determine User Name (Check Team, then Clients, then Auth)
+                let userName = user.displayName || user.email.split('@')[0];
+                if (this.team) {
+                    const teamMember = this.team.find(t => t.email === user.email);
+                    if (teamMember) userName = teamMember.name;
+                }
+                if (this.clients) {
+                    const client = this.clients.find(c => c.email === user.email);
+                    if (client) userName = client.name;
+                }
+
                 const payload = {
                     userId: (this.clients.find(c => c.email === user.email)?.id) || undefined,
+                    userName: userName,
                     history: history
                 };
 
