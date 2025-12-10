@@ -1,4 +1,4 @@
-import * as z from "zod"; // Use zod directly
+import * as z from "zod";
 import * as admin from "firebase-admin";
 
 // Import Genkit & Plugins
@@ -273,9 +273,11 @@ export const clientAgentFlow = ai.defineFlow(
         const response = await ai.generate({
             prompt: prompt,
             system: `${context} 
-               Current Date: ${today} (YYYY-MM-DD). Use this for all date calculations (today, tomorrow, next Monday, etc.).
+               Current Date: ${today} (YYYY-MM-DD).
 
-               ${historyText}
+               === PREVIOUS CONVERSATION LOG ===
+               ${historyText || "No previous history."}
+               =================================
 
                You are a smart, helpful AI assistant for 'Wilco Plumbing'.
                IMPORTANT: You MUST reply in the same language as the user's last message (e.g. French -> French, English -> English).
@@ -293,6 +295,7 @@ export const clientAgentFlow = ai.defineFlow(
             tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule, searchKnowledgeBase],
         });
 
+        // Debugging metadata
         return { text: response.text };
     }
 );
