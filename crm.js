@@ -13,7 +13,6 @@ const crm = {
     products: [],
     clients: [],
     team: [], // New Team state
-    team: [], // New Team state
     knowledge: [], // RAG Knowledge Base
     messages: [], // Chat messages
     aiLogs: [], // AI Audit Logs
@@ -420,272 +419,269 @@ const crm = {
         localStorage.setItem('wilco_invoices', JSON.stringify(this.invoices));
         localStorage.setItem('wilco_products', JSON.stringify(this.products));
         localStorage.setItem('wilco_clients', JSON.stringify(this.clients));
-        startFirebaseMode: function () {
-            if (typeof firebase === 'undefined') {
-                console.error("Firebase SDK not loaded");
-                alert("Critical Error: Firebase SDK not found. Check internet connection.");
-                return;
+    },
+
+    startFirebaseMode: function () {
+        if (typeof firebase === 'undefined') {
+            console.error("Firebase SDK not loaded");
+            return;
+        }
+
+        try {
+            // Initialize Firebase if not already done
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
             }
 
-            try {
-                // Initialize Firebase if not already done
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
+            this.db = firebase.firestore();
+            this.auth = firebase.auth();
+            console.log("Firebase initialized successfully");
 
-                this.db = firebase.firestore();
-                this.auth = firebase.auth();
-                console.log("Firebase initialized successfully");
-
-                // Explicitly set persistence
-                this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-                    .then(() => {
-                        this.auth.onAuthStateChanged(user => {
-                            try {
-                                if (user) {
-                                    console.log("User detected:", user.email);
-                                    this.showDashboard(user.email);
-                                    this.loadSettings(); // Load User Settings
-                                    // this.loadFirestoreData(); // Replace with Realtime
-                                    this.setupRealtimeListeners(); // Realtime Sync
-                                    this.setupMessageListener(); // Listen for chat
-                                    if (typeof this.startOnboarding === 'function') {
-                                        this.startOnboarding();
-                                    } else {
-                                        console.error("onboarding function missing");
-                                    }
-                                } else {
-                                    this.showLogin();
-                                }
-                            } catch (err) {
-                                console.error("Auth State Flow Error:", err);
-                                alert("Critical Error in Login Flow: " + err.message);
-                            }
-                        });
-                    })
-                    .catch((error) => {
-                        console.error("Auth Persistence Error:", error);
-                        // Fallback to basic listener if persistence fails
-                        this.auth.onAuthStateChanged(user => {
+            // Explicitly set persistence
+            this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                .then(() => {
+                    this.auth.onAuthStateChanged(user => {
+                        try {
                             if (user) {
+                                console.log("User detected:", user.email);
                                 this.showDashboard(user.email);
-                                this.loadSettings();
-                                this.setupRealtimeListeners();
-                                // this.loadFirestoreData();
+                                this.loadSettings(); // Load User Settings
+                                // this.loadFirestoreData(); // Replace with Realtime
+                                this.setupRealtimeListeners(); // Realtime Sync
+                                this.setupMessageListener(); // Listen for chat
+                                if (typeof this.startOnboarding === 'function') {
+                                    this.startOnboarding();
+                                } else {
+                                    console.error("onboarding function missing");
+                                }
+                            } else {
+                                this.showLogin();
                             }
-                            else { this.showLogin(); }
-                        });
+                        } catch (err) {
+                            console.error("Auth State Flow Error:", err);
+                            alert("Critical Error in Login Flow: " + err.message);
+                        }
                     });
+                })
+                .catch((error) => {
+                    console.error("Auth Persistence Error:", error);
+                    // Fallback to basic listener if persistence fails
+                    this.auth.onAuthStateChanged(user => {
+                        if (user) {
+                            this.showDashboard(user.email);
+                            this.loadSettings();
+                            this.setupRealtimeListeners();
+                            // this.loadFirestoreData();
+                        }
+                        else { this.showLogin(); }
+                    });
+                });
 
-            } catch (e) {
-                console.error("Firebase Init Error:", e);
-                alert("Firebase Init Failed: " + e.message + "\nCheck your firebase_config.js!");
+        } catch (e) {
+            console.error("Firebase Init Error:", e);
+            alert("Firebase Init Failed: " + e.message + "\nCheck your firebase_config.js!");
+        }
+    },
+
+    loadFirestoreData: async function () {
+        if (!this.db) return;
+
+        try {
+            const leadsSnap = await this.db.collection('leads').get();
+            const tasksSnap = await this.db.collection('tasks').get();
+            const invoicesSnap = await this.db.collection('invoices').get();
+            const productsSnap = await this.db.collection('products').get();
+            const clientsSnap = await this.db.collection('clients').get();
+
+            const teamSnap = await this.db.collection('team').get();
+            const knowledgeSnap = await this.db.collection('knowledge').get();
+
+            // Check if DB is completely fresh/empty
+            if (leadsSnap.empty && tasksSnap.empty && invoicesSnap.empty && productsSnap.empty && clientsSnap.empty && teamSnap.empty) {
+                console.log("Database empty. Seeding defaults...");
+                await this.seedFirestoreData();
+                return; // seed function will reload data
             }
-        },
 
-        loadFirestoreData: async function () {
-            if (!this.db) return;
+            this.leads = leadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.schedule = tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.invoices = invoicesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.clients = clientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            try {
-                const leadsSnap = await this.db.collection('leads').get();
-                const tasksSnap = await this.db.collection('tasks').get();
-                const invoicesSnap = await this.db.collection('invoices').get();
-                const productsSnap = await this.db.collection('products').get();
-                const clientsSnap = await this.db.collection('clients').get();
+            this.team = teamSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.knowledge = knowledgeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-                const teamSnap = await this.db.collection('team').get();
-                const knowledgeSnap = await this.db.collection('knowledge').get();
+            this.renderAllViews();
+            console.log("Firestore Data Loaded");
+        } catch (error) {
+            console.error("Error loading Firestore data:", error);
+            alert("Database Error: " + error.message + "\n\nCheck your Firestore Security Rules!");
+        }
+    },
 
-                // Check if DB is completely fresh/empty
-                if (leadsSnap.empty && tasksSnap.empty && invoicesSnap.empty && productsSnap.empty && clientsSnap.empty && teamSnap.empty) {
-                    console.log("Database empty. Seeding defaults...");
-                    await this.seedFirestoreData();
-                    return; // seed function will reload data
+    forceSeed: async function () {
+        if (confirm("This will attempt to write default data to your database. Continue?")) {
+            await this.seedFirestoreData();
+        }
+    },
+
+    seedFirestoreData: async function () {
+        const today = new Date().toISOString().split('T')[0];
+        const batch = this.db.batch();
+
+        const defaultLeads = [
+            { id: 'lead_1', name: 'John Doe', email: 'john@example.com', service: 'Emergency Repair', status: 'New', date: today }
+        ];
+        const defaultTasks = [
+            { id: 'task_1', date: today, time: '09:00', title: 'Install Water Heater', address: '123 Maple St', client: 'Sarah Smith' }
+        ];
+        const defaultInvoices = [
+            { id: 'INV-1001', client: 'Sarah Smith', clientId: 'client_2', date: today, amount: '450.00', status: 'Paid', items: [] }
+        ];
+        const defaultProducts = [
+            { id: 'prod_1', name: 'Service Call', category: 'Service', price: '99.00' },
+            { id: 'prod_2', name: 'Water Heater Install', category: 'Labor', price: '450.00' },
+            { id: 'prod_3', name: 'Copper Pipe (10ft)', category: 'Materials', price: '25.50' }
+        ];
+        const defaultClients = [
+            { id: 'client_1', name: 'John Doe', email: 'john@example.com', phone: '555-0101', address: '456 Oak Ave' },
+            { id: 'client_2', name: 'Sarah Smith', email: 'sarah@test.com', phone: '555-0102', address: '123 Maple St' }
+        ];
+        const defaultTeam = [
+            { id: 'user_1', name: 'Lukas Wilson', role: 'Owner', email: 'admin@wilco.com', phone: '555-0001' },
+            { id: 'user_2', name: 'Mike Plumber', role: 'Technician', email: 'mike@wilco.com', phone: '555-0002' }
+        ];
+
+        // Add to batch
+        defaultLeads.forEach(item => batch.set(this.db.collection('leads').doc(item.id), item));
+        defaultTasks.forEach(item => batch.set(this.db.collection('tasks').doc(item.id), item));
+        defaultInvoices.forEach(item => batch.set(this.db.collection('invoices').doc(item.id), item));
+        defaultProducts.forEach(item => batch.set(this.db.collection('products').doc(item.id), item));
+        defaultClients.forEach(item => batch.set(this.db.collection('clients').doc(item.id), item));
+        defaultTeam.forEach(item => batch.set(this.db.collection('team').doc(item.id), item));
+
+        try {
+            await batch.commit();
+            console.log("Database Seeded Successfully.");
+            alert("Success! Default data has been written to your database.");
+            this.loadFirestoreData(); // Reload to render
+        } catch (error) {
+            console.error("Error Seeding DB:", error);
+            alert("Seeding Failed: " + error.message + "\n\nLikely a permission issue.");
+        }
+    },
+
+    setupEventListeners: function () {
+        // Login Form
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value.trim();
+                const rememberEmail = document.getElementById('remember-email') ? document.getElementById('remember-email').checked : false;
+
+                if (!email || !password) {
+                    alert("Please enter both email and password.");
+                    return;
                 }
 
-                this.leads = leadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                this.schedule = tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                this.invoices = invoicesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                this.products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                this.clients = clientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (rememberEmail) localStorage.setItem('wilco_saved_email', email);
+                else localStorage.removeItem('wilco_saved_email');
 
-                this.team = teamSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                this.knowledge = knowledgeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (this.isMock) {
+                    console.log("Proceeding with Mock Login");
+                    this.showDashboard(email);
+                } else if (this.auth) {
+                    console.log("Proceeding with Firebase Login");
+                    this.auth.signInWithEmailAndPassword(email, password)
+                        .catch((error) => {
+                            console.error("Login Failed", error);
+                            alert("Login Failed: " + error.message);
+                        });
+                } else {
+                    console.error("Login State Error: Not Mock and No Auth");
+                    alert("System Error: Login service not initialized.");
+                }
+            });
+        }
 
-                this.renderAllViews();
-                console.log("Firestore Data Loaded");
-            } catch (error) {
-                console.error("Error loading Firestore data:", error);
-                alert("Database Error: " + error.message + "\n\nCheck your Firestore Security Rules!");
-            }
-        },
+        // Logout
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                if (this.auth) this.auth.signOut().then(() => location.reload());
+                else location.reload();
+            });
+        }
 
-        forceSeed: async function () {
-            if (confirm("This will attempt to write default data to your database. Continue?")) {
-                await this.seedFirestoreData();
-            }
-        },
+        // Date Navigation
+        const prevDay = document.getElementById('prev-day');
+        const nextDay = document.getElementById('next-day');
+        const dateInput = document.getElementById('workday-date');
 
-        seedFirestoreData: async function () {
-            const today = new Date().toISOString().split('T')[0];
-            const batch = this.db.batch();
+        if (prevDay) prevDay.addEventListener('click', () => this.changeDate(-1));
+        if (nextDay) nextDay.addEventListener('click', () => this.changeDate(1));
+        if (dateInput) dateInput.addEventListener('change', (e) => this.setDate(e.target));
 
-            const defaultLeads = [
-                { id: 'lead_1', name: 'John Doe', email: 'john@example.com', service: 'Emergency Repair', status: 'New', date: today }
-            ];
-            const defaultTasks = [
-                { id: 'task_1', date: today, time: '09:00', title: 'Install Water Heater', address: '123 Maple St', client: 'Sarah Smith' }
-            ];
-            const defaultInvoices = [
-                { id: 'INV-1001', client: 'Sarah Smith', clientId: 'client_2', date: today, amount: '450.00', status: 'Paid', items: [] }
-            ];
-            const defaultProducts = [
-                { id: 'prod_1', name: 'Service Call', category: 'Service', price: '99.00' },
-                { id: 'prod_2', name: 'Water Heater Install', category: 'Labor', price: '450.00' },
-                { id: 'prod_3', name: 'Copper Pipe (10ft)', category: 'Materials', price: '25.50' }
-            ];
-            const defaultClients = [
-                { id: 'client_1', name: 'John Doe', email: 'john@example.com', phone: '555-0101', address: '456 Oak Ave' },
-                { id: 'client_2', name: 'Sarah Smith', email: 'sarah@test.com', phone: '555-0102', address: '123 Maple St' }
-            ];
-            const defaultTeam = [
-                { id: 'user_1', name: 'Lukas Wilson', role: 'Owner', email: 'admin@wilco.com', phone: '555-0001' },
-                { id: 'user_2', name: 'Mike Plumber', role: 'Technician', email: 'mike@wilco.com', phone: '555-0002' }
-            ];
+        // Chat Form Listener
+        const chatForm = document.getElementById('chat-form');
+        if (chatForm) {
+            chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('message-input');
+                const text = input.value.trim();
+                if (text) {
+                    this.sendMessage(text);
+                    input.value = '';
+                }
+            });
+        }
 
-            // Add to batch
-            defaultLeads.forEach(item => batch.set(this.db.collection('leads').doc(item.id), item));
-            defaultTasks.forEach(item => batch.set(this.db.collection('tasks').doc(item.id), item));
-            defaultInvoices.forEach(item => batch.set(this.db.collection('invoices').doc(item.id), item));
-            defaultProducts.forEach(item => batch.set(this.db.collection('products').doc(item.id), item));
-            defaultClients.forEach(item => batch.set(this.db.collection('clients').doc(item.id), item));
-            defaultTeam.forEach(item => batch.set(this.db.collection('team').doc(item.id), item));
+        // Password Toggle
+        const togglePassword = document.getElementById('toggle-password');
+        const passwordInput = document.getElementById('password');
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener('click', () => {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                togglePassword.style.opacity = type === 'text' ? '1' : '0.5';
+            });
+        }
+    },
 
-            try {
-                await batch.commit();
-                console.log("Database Seeded Successfully.");
-                alert("Success! Default data has been written to your database.");
-                this.loadFirestoreData(); // Reload to render
-            } catch (error) {
-                console.error("Error Seeding DB:", error);
-                alert("Seeding Failed: " + error.message + "\n\nLikely a permission issue.");
-            }
-        },
+    openModal: function (type, id) {
+        const container = document.getElementById('modal-fields');
+        const idField = document.getElementById('modal-id');
+        const typeField = document.getElementById('modal-type');
+        const title = document.getElementById('modal-title');
+        const modal = document.getElementById('modal-overlay');
 
-        setupEventListeners: function () {
-            // Login Form
-            const loginForm = document.getElementById('login-form');
-            if (loginForm) {
-                loginForm.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    const email = document.getElementById('email').value.trim();
-                    const password = document.getElementById('password').value.trim();
-                    const rememberEmail = document.getElementById('remember-email') ? document.getElementById('remember-email').checked : false;
+        if (!container || !modal) return;
 
-                    if (!email || !password) {
-                        alert("Please enter both email and password.");
-                        return;
-                    }
+        container.innerHTML = '';
+        idField.value = id || '';
+        typeField.value = type;
 
-                    if (rememberEmail) localStorage.setItem('wilco_saved_email', email);
-                    else localStorage.removeItem('wilco_saved_email');
+        let data = null;
+        if (id) {
+            if (type === 'lead') data = this.leads.find(x => x.id == id);
+            if (type === 'task') data = this.schedule.find(x => x.id == id);
+            if (type === 'invoice') data = this.invoices.find(x => x.id == id);
+            if (type === 'product') data = this.products.find(x => x.id == id);
+            if (type === 'client') data = this.clients.find(x => x.id == id);
+            if (type === 'knowledge') data = this.knowledge.find(x => x.id == id);
+            if (type === 'team') data = this.team.find(x => x.id == id);
+        }
 
-                    // DEBUG ALERT
-                    alert("Login Clicked. Mock: " + this.isMock + ", Auth: " + (!!this.auth));
-                    console.log("Login Submit. Mock:", this.isMock, "Auth:", !!this.auth);
+        // Initialize Media State
+        this.currentMedia = (data && data.media) ? [...data.media] : [];
+        setTimeout(() => this.renderMediaPreviews(), 50);
 
-                    if (this.isMock) {
-                        console.log("Proceeding with Mock Login");
-                        this.showDashboard(email);
-                    } else if (this.auth) {
-                        console.log("Proceeding with Firebase Login");
-                        this.auth.signInWithEmailAndPassword(email, password)
-                            .catch((error) => {
-                                console.error("Login Failed", error);
-                                alert("Login Failed: " + error.message);
-                            });
-                    } else {
-                        console.error("Login State Error: Not Mock and No Auth");
-                        alert("System Error: Login service not initialized.");
-                    }
-                });
-            }
-
-            // Logout
-            const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', () => {
-                    if (this.auth) this.auth.signOut().then(() => location.reload());
-                    else location.reload();
-                });
-            }
-
-            // Date Navigation
-            const prevDay = document.getElementById('prev-day');
-            const nextDay = document.getElementById('next-day');
-            const dateInput = document.getElementById('workday-date');
-
-            if (prevDay) prevDay.addEventListener('click', () => this.changeDate(-1));
-            if (nextDay) nextDay.addEventListener('click', () => this.changeDate(1));
-            if (dateInput) dateInput.addEventListener('change', (e) => this.setDate(e.target));
-
-            // Chat Form Listener
-            const chatForm = document.getElementById('chat-form');
-            if (chatForm) {
-                chatForm.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    const input = document.getElementById('message-input');
-                    const text = input.value.trim();
-                    if (text) {
-                        this.sendMessage(text);
-                        input.value = '';
-                    }
-                });
-            }
-
-            // Password Toggle
-            const togglePassword = document.getElementById('toggle-password');
-            const passwordInput = document.getElementById('password');
-            if (togglePassword && passwordInput) {
-                togglePassword.addEventListener('click', () => {
-                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordInput.setAttribute('type', type);
-                    togglePassword.style.opacity = type === 'text' ? '1' : '0.5';
-                });
-            }
-        },
-
-        openModal: function (type, id) {
-            const container = document.getElementById('modal-fields');
-            const idField = document.getElementById('modal-id');
-            const typeField = document.getElementById('modal-type');
-            const title = document.getElementById('modal-title');
-            const modal = document.getElementById('modal-overlay');
-
-            if (!container || !modal) return;
-
-            container.innerHTML = '';
-            idField.value = id || '';
-            typeField.value = type;
-
-            let data = null;
-            if (id) {
-                if (type === 'lead') data = this.leads.find(x => x.id == id);
-                if (type === 'task') data = this.schedule.find(x => x.id == id);
-                if (type === 'invoice') data = this.invoices.find(x => x.id == id);
-                if (type === 'product') data = this.products.find(x => x.id == id);
-                if (type === 'client') data = this.clients.find(x => x.id == id);
-                if (type === 'knowledge') data = this.knowledge.find(x => x.id == id);
-                if (type === 'team') data = this.team.find(x => x.id == id);
-            }
-
-            // Initialize Media State
-            this.currentMedia = (data && data.media) ? [...data.media] : [];
-            setTimeout(() => this.renderMediaPreviews(), 50);
-
-            if (type === 'lead') {
-                title.innerText = id ? 'Edit Lead' : 'New Lead';
-                container.innerHTML = `
+        if (type === 'lead') {
+            title.innerText = id ? 'Edit Lead' : 'New Lead';
+            container.innerHTML = `
                 <div class="input-group">
                     <label>Customer Name</label>
                     <input type="text" name="name" value="${data ? data.name : ''}" required>
@@ -718,12 +714,12 @@ const crm = {
                     <div id="media-previews" style="margin-top:10px; display:flex; flex-wrap:wrap;"></div>
                 </div>
             `;
-            }
+        }
 
-            if (type === 'task') {
-                title.innerText = id ? 'Edit Task' : 'New Task';
-                const defaultDate = this.currentViewDate;
-                container.innerHTML = `
+        if (type === 'task') {
+            title.innerText = id ? 'Edit Task' : 'New Task';
+            const defaultDate = this.currentViewDate;
+            container.innerHTML = `
                 <div class="input-group">
                     <label>Event Type</label>
                     <select name="calendarType" id="calendar-type-select" onchange="crm.toggleEventFields(this.value)">
@@ -768,13 +764,13 @@ const crm = {
                     </select>
                 </div>
             `;
-                setTimeout(() => crm.toggleEventFields(document.getElementById('calendar-type-select').value), 50);
+            setTimeout(() => crm.toggleEventFields(document.getElementById('calendar-type-select').value), 50);
 
-            }
+        }
 
-            if (type === 'product') {
-                title.innerText = id ? 'Edit Product' : 'New Product';
-                container.innerHTML = `
+        if (type === 'product') {
+            title.innerText = id ? 'Edit Product' : 'New Product';
+            container.innerHTML = `
                 <div class="input-group">
                     <label>Product Name</label>
                     <input type="text" name="name" value="${data ? data.name : ''}" required>
@@ -797,11 +793,11 @@ const crm = {
                     <div id="media-previews" style="margin-top:10px; display:flex; flex-wrap:wrap;"></div>
                 </div>
             `;
-            }
+        }
 
-            if (type === 'client') {
-                title.innerText = id ? 'Edit Client' : 'New Client';
-                container.innerHTML = `
+        if (type === 'client') {
+            title.innerText = id ? 'Edit Client' : 'New Client';
+            container.innerHTML = `
                 <div class="input-group">
                     <label>Client Name</label>
                     <input type="text" name="name" value="${data ? data.name : ''}" required>
@@ -819,13 +815,13 @@ const crm = {
                     <input type="text" name="address" value="${data ? data.address : ''}">
                 </div>
             `;
-            }
+        }
 
 
 
-            if (type === 'knowledge') {
-                title.innerText = id ? 'Edit Article' : 'New Knowledge Article';
-                container.innerHTML = `
+        if (type === 'knowledge') {
+            title.innerText = id ? 'Edit Article' : 'New Knowledge Article';
+            container.innerHTML = `
                 <div class="input-group">
                     <label>Title</label>
                     <input type="text" name="title" value="${data ? data.title : ''}" required placeholder="e.g. Warranty Policy">
@@ -835,11 +831,11 @@ const crm = {
                     <textarea name="content" rows="6" required placeholder="Enter the details...">${data ? data.content : ''}</textarea>
                 </div>
             `;
-            }
+        }
 
-            if (type === 'team') {
-                title.innerText = id ? 'Edit Member' : 'New Team Member';
-                container.innerHTML = `
+        if (type === 'team') {
+            title.innerText = id ? 'Edit Member' : 'New Team Member';
+            container.innerHTML = `
                 <div class="input-group">
                     <label>Full Name</label>
                     <input type="text" name="name" value="${data ? data.name : ''}" required>
@@ -862,11 +858,11 @@ const crm = {
                     <input type="text" name="phone" value="${data ? data.phone : ''}">
                 </div>
             `;
-            }
+        }
 
-            if (type === 'blocker') {
-                title.innerText = 'Block Time / Holiday';
-                container.innerHTML = `
+        if (type === 'blocker') {
+            title.innerText = 'Block Time / Holiday';
+            container.innerHTML = `
                 <div class="input-group">
                     <label>Title</label>
                     <input type="text" name="title" placeholder="St. Patrick's Day / Off" required>
@@ -883,18 +879,18 @@ const crm = {
                     </select>
                 </div>
             `;
-            }
+        }
 
-            if (type === 'invoice') {
-                title.innerText = id ? 'Edit Invoice' : 'New Invoice';
-                const today = new Date().toISOString().split('T')[0];
+        if (type === 'invoice') {
+            title.innerText = id ? 'Edit Invoice' : 'New Invoice';
+            const today = new Date().toISOString().split('T')[0];
 
-                // Client Dropdown Options
-                const clientOptions = this.clients.map(c =>
-                    `<option value="${c.id}" ${data && (data.clientId === c.id || data.client === c.name) ? 'selected' : ''}>${c.name}</option>`
-                ).join('');
+            // Client Dropdown Options
+            const clientOptions = this.clients.map(c =>
+                `<option value="${c.id}" ${data && (data.clientId === c.id || data.client === c.name) ? 'selected' : ''}>${c.name}</option>`
+            ).join('');
 
-                container.innerHTML = `
+            container.innerHTML = `
                 <div class="input-group">
                     <label>Client</label>
                     <select name="clientId" required>
@@ -929,18 +925,18 @@ const crm = {
                 </div>
             `;
 
-                // Add existing items or one blank
-                if (data && data.items && data.items.length > 0) {
-                    data.items.forEach(item => crm.addLineItem(item));
-                } else {
-                    crm.addLineItem(); // One empty row
-                }
-
-                this.recalcTotal();
+            // Add existing items or one blank
+            if (data && data.items && data.items.length > 0) {
+                data.items.forEach(item => crm.addLineItem(item));
+            } else {
+                crm.addLineItem(); // One empty row
             }
 
             this.recalcTotal();
         }
+
+        // this.recalcTotal();
+
 
         // --- DYNAMIC FOOTER BUTTONS ---
         const footer = modal.querySelector('.modal-footer');
@@ -1921,7 +1917,8 @@ const crm = {
                         cb.checked = this.settings.workDays.includes(parseInt(cb.value));
                     });
                 }
-            });
+            }
+        });
     },
 
     setupRealtimeListeners: function () {
