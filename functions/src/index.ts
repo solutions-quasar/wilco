@@ -283,22 +283,24 @@ const createClient = ai.defineTool(
         description: "Creates a new client record in the CRM.",
         inputSchema: z.object({
             name: z.string(),
-            email: z.string().email(),
+            email: z.string().email().optional().or(z.literal("")),
             phone: z.string().optional(),
             address: z.string().optional()
         }),
         outputSchema: z.object({ success: z.boolean(), clientId: z.string(), message: z.string() }),
     },
     async ({ name, email, phone, address }) => {
-        // Check if exists
-        const snapshot = await db.collection("clients").where("email", "==", email).get();
-        if (!snapshot.empty) {
-            return { success: false, clientId: snapshot.docs[0].id, message: "Client with this email already exists." };
+        // Check if exists (only if email provided)
+        if (email) {
+            const snapshot = await db.collection("clients").where("email", "==", email).get();
+            if (!snapshot.empty) {
+                return { success: false, clientId: snapshot.docs[0].id, message: "Client with this email already exists." };
+            }
         }
 
         const ref = await db.collection("clients").add({
             name,
-            email,
+            email: email || "",
             phone: phone || "",
             address: address || "",
             createdAt: admin.firestore.FieldValue.serverTimestamp()
