@@ -1065,7 +1065,8 @@ const crm = {
 
     // --- NAVIGATION ---
     toggleSidebar: function () {
-        document.getElementById('dashboard-wrapper').classList.toggle('sidebar-open');
+        const sidebar = document.querySelector('.sidebar');
+        sidebar.classList.toggle('mobile-open');
         document.getElementById('mobile-overlay').classList.toggle('open');
     },
 
