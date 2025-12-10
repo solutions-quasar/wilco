@@ -257,6 +257,48 @@ const updateClient = ai.defineTool(
     }
 );
 
+const getClient = ai.defineTool(
+    {
+        name: "getClient",
+        description: "Retrieves client details (address, phone, etc.) by name or email. Use this BEFORE asking the user for their address if you think they might already be a client.",
+        inputSchema: z.object({
+            name: z.string().optional().describe("Client's name to search for (partial match supported)"),
+            email: z.string().optional().describe("Client's email to search for (exact match)"),
+        }),
+        outputSchema: z.object({
+            found: z.boolean(),
+            client: z.any().optional(),
+            message: z.string().optional()
+        }),
+    },
+    async ({ name, email }) => {
+        try {
+            let query = db.collection("clients");
+            let snapshot;
+
+            if (email) {
+                snapshot = await query.where("email", "==", email).limit(1).get();
+            } else if (name) {
+                snapshot = await query.where("name", "==", name).limit(1).get();
+            } else {
+                return { found: false, message: "Must provide name or email" };
+            }
+
+            if (snapshot.empty) {
+                await logAIAction("getClient", { name, email, result: "not found" }, "success");
+                return { found: false, message: "Client not found." };
+            }
+
+            const data = snapshot.docs[0].data();
+            await logAIAction("getClient", { name, email }, "success");
+            return { found: true, client: data };
+        } catch (error: any) {
+            await logAIAction("getClient", { name, email }, "failed");
+            throw new Error(`Failed to get client: ${error.message}`);
+        }
+    }
+);
+
 const searchKnowledgeBase = ai.defineTool(
     {
         name: "searchKnowledgeBase",
@@ -381,7 +423,7 @@ export const clientAgentFlow = ai.defineFlow(
 
                If the user asks a general question (e.g., "Find me a plumber" or "I have a leak"), politely explain you can help book an appointment or check availability. Do not refuse to answer; instead, guide them to your tools.
                `,
-            tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule, createClient, updateClient, searchKnowledgeBase],
+            tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule, createClient, updateClient, getClient, searchKnowledgeBase],
         });
 
         // Debugging metadata

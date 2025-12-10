@@ -1562,15 +1562,14 @@ const crm = {
         if (!this.db || !this.auth.currentUser) return;
         console.log("Setting up Realtime Listeners for CRM Data...");
 
-        const collections = ['leads', 'tasks', 'invoices', 'products', 'clients', 'team', 'knowledge'];
+        const collections = ['leads', 'schedule', 'invoices', 'products', 'clients', 'team', 'knowledge'];
 
         collections.forEach(col => {
             this.db.collection(col).onSnapshot(snapshot => {
                 const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-                // Map 'tasks' collection to 'schedule' state
-                const stateName = (col === 'tasks') ? 'schedule' : col;
-                this[stateName] = items;
+                // Direct mapping now that names match
+                this[col] = items;
 
                 console.log(`Synced [${col}]: ${items.length} items.`);
                 this.renderAllViews();
