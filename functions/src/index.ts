@@ -168,14 +168,12 @@ const bookAppointment = ai.defineTool(
             time: z.string().describe("HH:MM (24h)"),
             serviceType: z.string(),
             clientName: z.string().describe("Full name of the client. REQUIRED."),
-            phone: z.string().optional().describe("Client's phone number"),
-            email: z.string().email().optional().or(z.literal("")).describe("Client's email"),
             address: z.string().optional().describe("Client's full address"),
             details: z.string().optional().describe("Additional job details")
         }),
         outputSchema: z.object({ success: z.boolean(), bookingId: z.string().optional(), message: z.string() }),
     },
-    async ({ date, time, serviceType, clientName, phone, email, address, details }) => {
+    async ({ date, time, serviceType, clientName, address, details }) => {
         // Normalize Date/Time
         const normDate = date.split('-').map(p => p.padStart(2, '0')).join('-'); // Ensure 2025-01-01
         const normTime = time.split(':').map(p => p.padStart(2, '0')).join(':'); // Ensure 09:00
@@ -196,32 +194,26 @@ const bookAppointment = ai.defineTool(
             return { success: false, message: "Slot already taken." };
         }
 
-        // 1. Resolve Client (Find or Create)
+        // 1. Resolve Client (Must Exist)
         let resolvedClientId = "";
         let finalClientName = clientName;
 
         if (clientName && clientName !== "Valued Client") {
             try {
-                // Check if exists
                 const clientQuery = await db.collection("clients").where("name", "==", clientName).limit(1).get();
                 if (!clientQuery.empty) {
                     resolvedClientId = clientQuery.docs[0].id;
-                    // details could be updated here if address provided? skipping for safety
                 } else {
-                    // Create New
-                    const newClientRef = await db.collection("clients").add({
-                        name: clientName,
-                        address: address || "",
-                        email: email || "",
-                        phone: phone || "",
-                        status: "New",
-                        createdAt: admin.firestore.FieldValue.serverTimestamp()
-                    });
-                    resolvedClientId = newClientRef.id;
-                    console.log(`Auto-created new client: ${clientName} (${resolvedClientId})`);
+                    // Client Not Found -> Fail and Prompt Creation
+                    await logAIAction("bookAppointment", { clientName, reason: "Client Not Found" }, "failed");
+                    return {
+                        success: false,
+                        message: `Client '${clientName}' not found. Please ask the user if they would like to create a new client profile for this person.`
+                    };
                 }
             } catch (err) {
                 console.error("Error resolving client:", err);
+                return { success: false, message: "System error resolving client." };
             }
         }
 
@@ -239,8 +231,8 @@ const bookAppointment = ai.defineTool(
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date: normDate, time: normTime, createdClient: !!resolvedClientId }, "success");
-        return { success: true, bookingId: ref.id, message: "Appointment confirmed and client record synced." };
+        await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date: normDate, time: normTime }, "success");
+        return { success: true, bookingId: ref.id, message: "Appointment confirmed." };
     }
 
 
