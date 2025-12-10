@@ -1644,8 +1644,8 @@ const crm = {
             });
 
             // 2. TRIGGER AI AGENT (Real Cloud Function)
-            // Trigger if @ai OR if Audio is sent (Implicitly an AI command)
-            if ((text && text.toLowerCase().includes('@ai')) || audioBase64) {
+            // Trigger ALWAYS (Chat is now AI-only)
+            if (text || audioBase64) {
                 const clientAgent = firebase.functions().httpsCallable('clientAgent');
 
                 // Show "Typing..." indicator (Optimistic UI)
