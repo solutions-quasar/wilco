@@ -483,7 +483,7 @@
             </button>
         </div>
         <div class="chat-input-area">
-            <input type="text" id="message-input" placeholder="Hold Mic to speak..." autocomplete="off"
+            <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off"
                 onkeypress="if(event.key === 'Enter') { crm.sendMessage(this.value); this.value = ''; }">
             <button class="btn-icon" id="mic-btn" style="color:var(--text-muted);" onclick="crm.toggleRecording()"
                 title="Click to Record / Click to Stop">
