@@ -40,9 +40,49 @@ const checkAvailability = ai.defineTool(
         outputSchema: z.object({ available: z.boolean(), slots: z.array(z.string()) }),
     },
     async ({ date }) => {
+        // 1. Fetch Constraints (Mock Single User for now)
+        let workDays = [1, 2, 3, 4, 5]; // Mon-Fri
+        let startHour = 9;
+        let endHour = 17;
+
+        try {
+            const userSnap = await db.collection("users").limit(1).get();
+            if (!userSnap.empty) {
+                const settings = userSnap.docs[0].data().settings;
+                if (settings) {
+                    if (settings.workDays) workDays = settings.workDays;
+                    if (settings.startTime) startHour = parseInt(settings.startTime.split(':')[0]);
+                    if (settings.endTime) endHour = parseInt(settings.endTime.split(':')[0]);
+                }
+            }
+        } catch (e) {
+            console.error("Error fetching settings:", e);
+        }
+
+        // 2. Check Day of Week
+        const dayOfWeek = new Date(date).getUTCDay(); // 0=Sun, 1=Mon...
+        if (!workDays.includes(dayOfWeek)) {
+            return { available: false, slots: [], reason: "Non-working day" };
+        }
+
+        // 3. Generate All Slots
+        const allSlots = [];
+        for (let h = startHour; h < endHour; h++) {
+            allSlots.push(`${h.toString().padStart(2, '0')}:00`);
+        }
+
+        // 4. Check Occupancy
         const snapshot = await db.collection("schedule").where("date", "==", date).get();
         const busyTimes = snapshot.docs.map(doc => doc.data().time);
-        const allSlots = ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00"];
+
+        // Also check Tasks as Blockers (if they have time)
+        const taskSnap = await db.collection("tasks").where("date", "==", date).get();
+        taskSnap.docs.forEach(doc => {
+            if (doc.data().time && (doc.data().type === 'blocker' || doc.data().type === 'holiday')) {
+                busyTimes.push(doc.data().time);
+            }
+        });
+
         const freeSlots = allSlots.filter(slot => !busyTimes.includes(slot));
         return { available: freeSlots.length > 0, slots: freeSlots };
     }

@@ -152,6 +152,9 @@
                 <button class="nav-btn" onclick="crm.switchView('ailogs')">
                     <i class='bx bx-brain nav-icon'></i> AI Logs
                 </button>
+                <button class="nav-btn" onclick="crm.switchView('settings')">
+                    <i class='bx bx-cog nav-icon'></i> Settings
+                </button>
 
 
                 <div style="flex: 1;"></div> <!-- Spacer -->
@@ -294,6 +297,70 @@
                 </div>
             </div>
 
+            <!-- VIEW: Settings -->
+            <div id="view-settings" class="view-section">
+                <header class="view-header">
+                    <h2>Settings</h2>
+                </header>
+                <div class="stat-card" style="max-width: 600px;">
+                    <div style="margin-bottom: 2rem;">
+                        <h3>Calendar Preferences</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">Set your business
+                            hours. The AI will respect these times.</p>
+
+                        <div class="input-group">
+                            <label>Default Calendar View</label>
+                            <select id="setting-default-view">
+                                <option value="month">Month View</option>
+                                <option value="week">Week View</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group" style="margin-top: 1rem;">
+                            <label>Work Days</label>
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <label
+                                    style="font-weight: normal; display: flex; align-items: center; gap: 0.5rem;"><input
+                                        type="checkbox" class="setting-workday" value="1"> Mon</label>
+                                <label
+                                    style="font-weight: normal; display: flex; align-items: center; gap: 0.5rem;"><input
+                                        type="checkbox" class="setting-workday" value="2"> Tue</label>
+                                <label
+                                    style="font-weight: normal; display: flex; align-items: center; gap: 0.5rem;"><input
+                                        type="checkbox" class="setting-workday" value="3"> Wed</label>
+                                <label
+                                    style="font-weight: normal; display: flex; align-items: center; gap: 0.5rem;"><input
+                                        type="checkbox" class="setting-workday" value="4"> Thu</label>
+                                <label
+                                    style="font-weight: normal; display: flex; align-items: center; gap: 0.5rem;"><input
+                                        type="checkbox" class="setting-workday" value="5"> Fri</label>
+                                <label
+                                    style="font-weight: normal; display: flex; align-items: center; gap: 0.5rem;"><input
+                                        type="checkbox" class="setting-workday" value="6"> Sat</label>
+                                <label
+                                    style="font-weight: normal; display: flex; align-items: center; gap: 0.5rem;"><input
+                                        type="checkbox" class="setting-workday" value="0"> Sun</label>
+                            </div>
+                        </div>
+
+                        <div class="input-group" style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <div style="flex: 1;">
+                                <label>Start Time</label>
+                                <input type="time" id="setting-start-time" value="09:00">
+                            </div>
+                            <div style="flex: 1;">
+                                <label>End Time</label>
+                                <input type="time" id="setting-end-time" value="17:00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button class="btn-crm" onclick="crm.saveSettings()">Save Settings</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- VIEW: Calendar -->
             <div id="view-daily" class="view-section">
                 <header class="view-header">
@@ -305,6 +372,13 @@
                             <button class="btn-nav" onclick="crm.changeMonth(1)"><i
                                     class='bx bx-chevron-right'></i></button>
                             <button class="btn-secondary small" onclick="crm.goToToday()">Today</button>
+                        </div>
+                        <div class="view-controls"
+                            style="display:flex; gap:0.5rem; background:var(--secondary); padding:4px; border-radius:8px; margin-left: 1rem;">
+                            <button class="btn-text active" id="btn-view-month" onclick="crm.setCalendarView('month')"
+                                style="background:white; box-shadow:var(--shadow-sm); padding: 4px 12px; font-weight:600; font-size: 0.8rem; border-radius: 6px;">Month</button>
+                            <button class="btn-text" id="btn-view-week" onclick="crm.setCalendarView('week')"
+                                style="padding: 4px 12px; font-size: 0.8rem;">Week</button>
                         </div>
                     </div>
                     <div class="header-actions">

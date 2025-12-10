@@ -17,6 +17,12 @@ const crm = {
     knowledge: [], // RAG Knowledge Base
     messages: [], // Chat messages
     aiLogs: [], // AI Audit Logs
+    settings: {
+        defaultView: 'month',
+        workDays: [1, 2, 3, 4, 5],
+        startTime: '09:00',
+        endTime: '17:00'
+    },
     activeMenuId: null,
     onboardingStep: 0,
     onboardingSteps: [
@@ -1261,11 +1267,38 @@ const crm = {
     },
 
     renderCalendar: function () {
+        const view = (this.settings && this.settings.defaultView) ? this.settings.defaultView : 'month';
+        // Override if locally switched (we need a state for current view mode, separate from settings default)
+        const currentView = this.currentCalendarViewMode || view;
+
+        if (currentView === 'week') {
+            this.renderWeekView();
+        } else {
+            this.renderMonthView();
+        }
+    },
+
+    setCalendarView: function (mode) {
+        this.currentCalendarViewMode = mode;
+        // Update Buttons
+        document.querySelectorAll('.view-controls .btn-text').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById(`btn-view-${mode}`);
+        if (btn) btn.classList.add('active');
+
+        this.renderCalendar();
+    },
+
+    renderMonthView: function () {
         const grid = document.getElementById('calendar-grid');
         const title = document.getElementById('calendar-title');
-        if (!grid || !title) return;
+        // Reset Grid Class for Month
+        if (grid) {
+            grid.className = 'calendar-grid';
+            grid.style.display = 'grid';
+            grid.innerHTML = '';
+        }
+        if (!title) return;
 
-        grid.innerHTML = '';
         const year = this.currentCalendarDate.getFullYear();
         const month = this.currentCalendarDate.getMonth();
 
@@ -1296,6 +1329,11 @@ const crm = {
             dayDiv.className = 'calendar-day';
             if (isCurrentMonth && day === todayCheck.getDate()) dayDiv.classList.add('today');
 
+            // Drag & Drop Attributes
+            dayDiv.setAttribute('data-date', dateStr);
+            dayDiv.ondragover = (e) => crm.handleDragOver(e);
+            dayDiv.ondrop = (e) => crm.handleDrop(e, dateStr);
+
             dayDiv.onclick = () => {
                 // Open modal with pre-filled date
                 crm.openModal('task');
@@ -1316,6 +1354,7 @@ const crm = {
                 ...appointments.map(a => ({ ...a, _source: 'schedule' })),
                 ...tasks.map(t => ({ ...t, title: t.title || t.description, type: 'task', _source: 'task' }))
             ];
+
             // Also check leads with dates
             const leadEvents = this.leads.filter(l => l.date === dateStr);
 
@@ -1333,7 +1372,8 @@ const crm = {
                     if (isHoliday) pillClass = 'event-holiday';
                     if (isTask) pillClass = 'event-task'; // CSS class needed
 
-                    html += `<div class="calendar-event ${pillClass}" title="${ev.title}">${ev.title}</div>`;
+                    // Draggable Event
+                    html += `<div class="calendar-event ${pillClass}" title="${ev.title}" draggable="true" ondragstart="crm.handleDragStart(event, '${ev.id}', '${ev._source}')">${ev.title}</div>`;
                     eventCount++;
                 }
             });
@@ -1361,6 +1401,116 @@ const crm = {
             dayDiv.className = 'calendar-day other-month';
             dayDiv.innerHTML = `<div class="day-number">${i}</div>`;
             grid.appendChild(dayDiv);
+        }
+    },
+
+    renderWeekView: function () {
+        const grid = document.getElementById('calendar-grid');
+        const title = document.getElementById('calendar-title');
+
+        // Switch Grid Mode
+        grid.className = 'calendar-week-grid'; // New CSS Class
+        grid.style.display = 'grid';
+        grid.style.gridTemplateColumns = '80px repeat(7, 1fr)'; // Timecol + 7 Days
+        grid.innerHTML = '';
+
+        // Calculate Start of Week (Sunday/Monday based on locale or preference? Let's assume Sunday for view consistency with Month)
+        // Or better, align with `currentCalendarDate` as the focal point
+        const curr = new Date(this.currentCalendarDate);
+        const day = curr.getDay(); // 0 is Sunday
+        const diff = curr.getDate() - day; // adjust when day is sunday
+        const startOfWeek = new Date(curr.setDate(diff)); // First day is Sunday
+
+        // Title: Week of ...
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        title.innerText = `${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}`;
+
+        // Get Settings Days/Hours
+        const startHour = (this.settings && this.settings.startTime) ? parseInt(this.settings.startTime.split(':')[0]) : 8;
+        const endHour = (this.settings && this.settings.endTime) ? parseInt(this.settings.endTime.split(':')[0]) : 18;
+
+        // Header Row (Empty corner + Days)
+        grid.appendChild(document.createElement('div')); // Corner
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(startOfWeek);
+            d.setDate(startOfWeek.getDate() + i);
+            const th = document.createElement('div');
+            th.className = 'calendar-days-header';
+            th.style.border = '1px solid var(--border)'; // Specific style
+            th.innerText = d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' });
+
+            // Highlight Today
+            const today = new Date();
+            if (d.toDateString() === today.toDateString()) {
+                th.style.background = 'rgba(37, 99, 235, 0.1)';
+                th.style.color = 'var(--accent)';
+            }
+            grid.appendChild(th);
+        }
+
+        // Time Rows
+        for (let h = startHour; h <= endHour; h++) {
+            // Time Label
+            const timeLabel = document.createElement('div');
+            timeLabel.className = 'time-column';
+            timeLabel.style.textAlign = 'right';
+            timeLabel.style.padding = '5px';
+            timeLabel.style.fontSize = '0.8rem';
+            timeLabel.style.color = 'var(--text-muted)';
+            timeLabel.innerText = `${h.toString().padStart(2, '0')}:00`;
+            grid.appendChild(timeLabel);
+
+            // 7 Days Columns for this Hour
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(startOfWeek);
+                d.setDate(startOfWeek.getDate() + i);
+                const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+                const timeStr = `${h.toString().padStart(2, '0')}:00`;
+
+                const cell = document.createElement('div');
+                cell.className = 'calendar-day'; // Reuse basic style
+                cell.style.minHeight = '60px'; // Taller slots
+
+                // Drag & Drop
+                cell.setAttribute('data-date', dateStr);
+                cell.setAttribute('data-time', timeStr);
+                cell.ondragover = (e) => crm.handleDragOver(e);
+                cell.ondrop = (e) => crm.handleDrop(e, dateStr, timeStr);
+
+                // Click to Create
+                cell.onclick = () => {
+                    crm.openModal('task');
+                    setTimeout(() => {
+                        const dateInput = document.querySelector('input[name="date"]');
+                        if (dateInput) dateInput.value = dateStr;
+                        const timeInput = document.querySelector('input[name="time"]');
+                        if (timeInput) timeInput.value = timeStr;
+                    }, 100);
+                };
+
+                // Find events for this specific Hour slot
+                // Note: Simplified. Matches exact hour string currently.
+                const checkTime = (t) => t && t.startsWith(`${h.toString().padStart(2, '0')}`);
+
+                const slotEvents = [
+                    ...(this.schedule || []).filter(s => s.date === dateStr && checkTime(s.time)).map(a => ({ ...a, _source: 'schedule' })),
+                    ...(this.tasks || []).filter(t => t.date === dateStr && checkTime(t.time)).map(t => ({ ...t, _source: 'task', type: 'task' }))
+                ];
+
+                slotEvents.forEach(ev => {
+                    const isTask = ev._source === 'task';
+                    const cssClass = isTask ? 'event-task' : (ev.type === 'blocker' ? 'event-blocker' : 'event-job');
+                    const div = document.createElement('div');
+                    div.className = `calendar-event ${cssClass}`;
+                    div.innerText = ev.title || ev.description || 'Event';
+                    div.setAttribute('draggable', 'true');
+                    div.setAttribute('ondragstart', `crm.handleDragStart(event, '${ev.id}', '${ev._source}')`);
+                    cell.appendChild(div);
+                });
+
+                grid.appendChild(cell);
+            }
         }
     },
 
@@ -1596,6 +1746,99 @@ const crm = {
                 </td>
             `;
             tbody.appendChild(tr);
+        });
+    },
+
+    // --- DRAG AND DROP LOGIC ---
+    handleDragStart: function (e, id, type) {
+        e.dataTransfer.setData("text/plain", JSON.stringify({ id, type }));
+        e.dataTransfer.dropEffect = "move";
+    },
+
+    handleDragOver: function (e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        // Visual feedback? 
+        e.currentTarget.style.background = "var(--secondary)";
+    },
+
+    // Helper to clear drag highlight (simulated by just resetting on re-render or explicit leave listener if needed)
+    // For now, simpler: CSS :hover handles most, but background set in dragover might stick.
+    // Better: use CSS class for dragover state.
+    // Let's implement handleDragLeave? 
+    // MVP: Just reset background in Drop.
+
+    handleDrop: function (e, newDate, newTime = null) {
+        e.preventDefault();
+        e.currentTarget.style.background = ""; // Reset
+
+        try {
+            const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+            const { id, type } = data;
+
+            console.log(`Dropped ${type} ${id} to ${newDate} ${newTime || '(no time)'}`);
+
+            this.updateEventLocation(id, type, newDate, newTime);
+        } catch (err) {
+            console.error("Drop failed:", err);
+        }
+    },
+
+    updateEventLocation: function (id, type, date, time) {
+        if (!this.db) return;
+
+        // Determine Collection
+        let collection = 'schedule'; // Default
+        if (type === 'task') collection = 'tasks';
+
+        const updateData = { date: date };
+        if (time) updateData.time = time;
+
+        this.db.collection(collection).doc(id).update(updateData)
+            .then(() => {
+                // console.log("Event moved!");
+                // No need to alert, UI updates via listener
+            })
+            .catch(err => alert("Error moving event: " + err.message));
+    },
+
+    saveSettings: function () {
+        if (!this.db || !this.auth.currentUser) return;
+
+        const defaultView = document.getElementById('setting-default-view').value;
+        // Collect checked checkboxes for workDays
+        const workDays = Array.from(document.querySelectorAll('.setting-workday:checked')).map(cb => parseInt(cb.value));
+        const startTime = document.getElementById('setting-start-time').value;
+        const endTime = document.getElementById('setting-end-time').value;
+
+        this.settings = { defaultView, workDays, startTime, endTime };
+
+        this.db.collection('users').doc(this.auth.currentUser.uid).set({
+            settings: this.settings
+        }, { merge: true })
+            .then(() => alert("Settings Saved!"))
+            .catch(err => console.error("Error saving settings:", err));
+    },
+
+    loadSettings: function () {
+        if (!this.db || !this.auth.currentUser) return;
+
+        this.db.collection('users').doc(this.auth.currentUser.uid).get().then(doc => {
+            if (doc.exists && doc.data().settings) {
+                this.settings = { ...this.settings, ...doc.data().settings };
+                console.log("Settings Loaded:", this.settings);
+
+                // Update UI to match
+                if (document.getElementById('setting-default-view')) {
+                    document.getElementById('setting-default-view').value = this.settings.defaultView;
+                    document.getElementById('setting-start-time').value = this.settings.startTime;
+                    document.getElementById('setting-end-time').value = this.settings.endTime;
+
+                    document.querySelectorAll('.setting-workday').forEach(cb => {
+                        cb.checked = this.settings.workDays.includes(parseInt(cb.value));
+                    });
+                }
+            }
         });
     },
 

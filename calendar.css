@@ -116,3 +116,41 @@
     text-align: center;
     margin-top: 2px;
 }
+
+/* WEEK VIEW SPECIFIC */
+.calendar-week-grid {
+    display: grid;
+    /* Columns set inline in JS: 80px repeat(7, 1fr) */
+    flex: 1;
+    overflow-y: auto;
+    /* Scrollable hours */
+    border-top: 1px solid var(--border);
+}
+
+.time-column {
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-main);
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+/* Ensure header cells in week view look right when injected */
+.calendar-days-header div {
+    /* JS injects divs directly */
+    text-align: center;
+    padding: 8px;
+    font-weight: 600;
+}
+
+/* Make events draggable look interactive */
+.calendar-event[draggable="true"] {
+    cursor: grab;
+}
+
+.calendar-event[draggable="true"]:active {
+    cursor: grabbing;
+}
