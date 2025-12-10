@@ -714,9 +714,19 @@ const crm = {
             const defaultDate = this.currentViewDate;
             container.innerHTML = `
                 <div class="input-group">
-                    <label>Job Title</label>
+                    <label>Event Type</label>
+                    <select name="calendarType" id="calendar-type-select" onchange="crm.toggleEventFields(this.value)">
+                        <option value="appointment" ${!data || (data && data._source !== 'task' && data.type !== 'blocker') ? 'selected' : ''}>Appointment</option>
+                        <option value="task" ${data && data._source === 'task' ? 'selected' : ''}>Task</option>
+                        <option value="blocker" ${data && (data.type === 'blocker' || data.type === 'holiday') ? 'selected' : ''}>Block Date / Holiday</option>
+                    </select>
+                </div>
+
+                <div class="input-group" id="field-title">
+                    <label>Title / Description</label>
                     <input type="text" name="title" value="${data ? data.title : ''}" required placeholder="e.g. Install Sink">
                 </div>
+
                 <div class="input-group" style="display: flex; gap: 1rem;">
                     <div style="flex: 1;">
                         <label>Date</label>
@@ -724,17 +734,30 @@ const crm = {
                     </div>
                     <div style="flex: 1;">
                         <label>Time</label>
-                        <input type="time" name="time" value="${data ? data.time : '09:00'}" required>
+                        <input type="time" name="time" value="${data ? data.time : '09:00'}">
                     </div>
                 </div>
-                <div class="input-group">
-                    <label>Client Name</label>
-                    <input type="text" name="client" value="${data ? data.client : ''}">
+
+                <div id="fields-client-info">
+                    <div class="input-group">
+                        <label>Client Name</label>
+                        <input type="text" name="client" value="${data ? data.client : ''}">
+                    </div>
+                    <div class="input-group">
+                        <label>Address</label>
+                        <input type="text" name="address" value="${data ? data.address : ''}">
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label>Address</label>
-                    <input type="text" name="address" value="${data ? data.address : ''}">
+
+                 <div class="input-group" id="field-status" style="display:none;">
+                    <label>Block Type</label>
+                    <select name="blockType">
+                        <option value="blocker">Unavailable</option>
+                        <option value="holiday">Holiday</option>
+                    </select>
                 </div>
+            `;
+            setTimeout(() => crm.toggleEventFields(document.getElementById('calendar-type-select').value), 50);
             `;
         }
 
@@ -1010,8 +1033,23 @@ const crm = {
             collectionName = 'leads';
             this.updateLocalArray('leads', newItem);
         } else if (formType === 'task') {
-            collectionName = 'tasks';
-            this.updateLocalArray('schedule', newItem);
+            // Handle Unified Calendar Event logic
+            const calendarType = document.getElementById('calendar-type-select').value;
+            
+            if (calendarType === 'task') {
+                collectionName = 'tasks';
+                delete newItem.calendarType; // clean up
+                this.updateLocalArray('tasks', newItem);
+            } else if (calendarType === 'blocker') {
+                collectionName = 'schedule';
+                newItem.type = document.querySelector('select[name="blockType"]').value || 'blocker';
+                this.updateLocalArray('schedule', newItem);
+            } else {
+                // Appointment (Default)
+                collectionName = 'schedule';
+                newItem.type = 'job';
+                this.updateLocalArray('schedule', newItem);
+            }
         } else if (formType === 'invoice') {
             collectionName = 'invoices';
             this.updateLocalArray('invoices', newItem);
@@ -1097,6 +1135,19 @@ const crm = {
         // Close mobile sidebar if open
         document.getElementById('dashboard-wrapper').classList.remove('sidebar-open');
         document.getElementById('mobile-overlay').classList.remove('open');
+    },
+
+    toggleEventFields: function(type) {
+        const clientFields = document.getElementById('fields-client-info');
+        const statusField = document.getElementById('field-status');
+        
+        if (type === 'blocker') {
+            if (clientFields) clientFields.style.display = 'none';
+            if (statusField) statusField.style.display = 'block';
+        } else {
+            if (clientFields) clientFields.style.display = 'block';
+            if (statusField) statusField.style.display = 'none';
+        }
     },
 
     closeAllMenus: function () {
@@ -1256,8 +1307,15 @@ const crm = {
 
             let html = `<div class="day-number">${day}</div>`;
 
-            // Find Events
-            const dayEvents = this.schedule.filter(s => s.date === dateStr);
+            // Find Events (Merge Schedule/Appointments and Tasks)
+            const appointments = this.schedule ? this.schedule.filter(s => s.date === dateStr) : [];
+            const tasks = this.tasks ? this.tasks.filter(t => t.date === dateStr) : [];
+            
+            // Normalize for display
+            const dayEvents = [
+                ...appointments.map(a => ({ ...a, _source: 'schedule' })), 
+                ...tasks.map(t => ({ ...t, title: t.title || t.description, type: 'task', _source: 'task' }))
+            ];
             // Also check leads with dates
             const leadEvents = this.leads.filter(l => l.date === dateStr);
 
@@ -1268,7 +1326,13 @@ const crm = {
                 if (eventCount < 3) {
                     const isBlocker = ev.type === 'blocker';
                     const isHoliday = ev.type === 'holiday';
-                    const pillClass = isBlocker ? 'event-blocker' : (isHoliday ? 'event-holiday' : 'event-job');
+                    const isTask = ev._source === 'task';
+                    
+                    let pillClass = 'event-job'; // Default (Appointment)
+                    if (isBlocker) pillClass = 'event-blocker';
+                    if (isHoliday) pillClass = 'event-holiday';
+                    if (isTask) pillClass = 'event-task'; // CSS class needed
+                    
                     html += `<div class="calendar-event ${pillClass}" title="${ev.title}">${ev.title}</div>`;
                     eventCount++;
                 }
@@ -1562,14 +1626,16 @@ const crm = {
         if (!this.db || !this.auth.currentUser) return;
         console.log("Setting up Realtime Listeners for CRM Data...");
 
-        const collections = ['leads', 'schedule', 'invoices', 'products', 'clients', 'team', 'knowledge'];
+        const collections = ['leads', 'schedule', 'tasks', 'invoices', 'products', 'clients', 'team', 'knowledge'];
 
         collections.forEach(col => {
             this.db.collection(col).onSnapshot(snapshot => {
                 const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                // Direct mapping now that names match
-                this[col] = items;
+                
+                // Map collections to state
+                if (col === 'schedule') this.schedule = items;
+                else if (col === 'tasks') this.tasks = items;
+                else this[col] = items;
 
                 console.log(`Synced [${col}]: ${items.length} items.`);
                 this.renderAllViews();

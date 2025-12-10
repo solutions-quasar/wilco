@@ -103,6 +103,10 @@
     background: #8b5cf6;
 }
 
+.event-task {
+    background: var(--success);
+}
+
 /* Purple */
 
 /* "More" indicator */
