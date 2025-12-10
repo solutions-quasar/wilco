@@ -1923,8 +1923,7 @@ loadSettings: function () {
                     cb.checked = this.settings.workDays.includes(parseInt(cb.value));
                 });
             }
-        }
-    });
+        });
 },
 
 setupRealtimeListeners: function () {
@@ -2466,4 +2465,11 @@ toggleChat: function () {
 }
 };
 
-document.addEventListener('DOMContentLoaded', () => crm.init());
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        crm.init();
+    } catch (error) {
+        console.error("Critical Init Error:", error);
+        alert("System Error: " + error.message);
+    }
+});
