@@ -1614,7 +1614,12 @@ const crm = {
         this.messageListenerUnsubscribe = query.onSnapshot((snapshot) => {
             console.log("Message Snapshot received. Docs:", snapshot.size);
             const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            this.messages = loaded.reverse(); // Reverse to show oldest first in UI
+            const sortedLoaded = loaded.reverse(); // Reverse to show oldest first in UI
+
+            // Preserve local temporary messages (e.g., Typing Indicator)
+            const tempMessages = this.messages.filter(m => m.isTemp);
+
+            this.messages = [...sortedLoaded, ...tempMessages];
             this.renderMessages();
         }, (error) => {
             console.error("Message Listener Error:", error);
