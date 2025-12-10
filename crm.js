@@ -420,72 +420,60 @@ const crm = {
         localStorage.setItem('wilco_invoices', JSON.stringify(this.invoices));
         localStorage.setItem('wilco_products', JSON.stringify(this.products));
         localStorage.setItem('wilco_clients', JSON.stringify(this.clients));
-        localStorage.setItem('wilco_team', JSON.stringify(this.team));
-        localStorage.setItem('wilco_messages', JSON.stringify(this.messages));
-    },
-
-    startFirebaseMode: function () {
-        if (typeof firebase === 'undefined') {
-            console.error("Firebase SDK not loaded");
-            alert("Critical Error: Firebase SDK not found. Check internet connection.");
-            return;
+        // Initialize Firebase if not already done
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
         }
 
-        try {
-            // Initialize Firebase if not already done
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
+        this.db = firebase.firestore();
+        this.auth = firebase.auth();
+        console.log("Firebase initialized successfully");
 
-            this.db = firebase.firestore();
-            this.auth = firebase.auth();
-            console.log("Firebase initialized successfully");
-
-            // Explicitly set persistence
-            this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-                .then(() => {
-                    this.auth.onAuthStateChanged(user => {
-                        try {
-                            if (user) {
-                                console.log("User detected:", user.email);
-                                this.showDashboard(user.email);
-                                this.loadSettings(); // Load User Settings
-                                // this.loadFirestoreData(); // Replace with Realtime
-                                this.setupRealtimeListeners(); // Realtime Sync
-                                this.setupMessageListener(); // Listen for chat
-                                if (typeof this.startOnboarding === 'function') {
-                                    this.startOnboarding();
-                                } else {
-                                    console.error("onboarding function missing");
-                                }
-                            } else {
-                                this.showLogin();
-                            }
-                        } catch (err) {
-                            console.error("Auth State Flow Error:", err);
-                            alert("Critical Error in Login Flow: " + err.message);
-                        }
-                    });
-                })
-                .catch((error) => {
-                    console.error("Auth Persistence Error:", error);
-                    // Fallback to basic listener if persistence fails
-                    this.auth.onAuthStateChanged(user => {
+        // Explicitly set persistence
+        this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+            .then(() => {
+                this.auth.onAuthStateChanged(user => {
+                    try {
                         if (user) {
+                            console.log("User detected:", user.email);
                             this.showDashboard(user.email);
-                            this.loadSettings();
-                            this.setupRealtimeListeners();
-                            // this.loadFirestoreData();
+                            this.loadSettings(); // Load User Settings
+                            // this.loadFirestoreData(); // Replace with Realtime
+                            this.setupRealtimeListeners(); // Realtime Sync
+                            this.setupMessageListener(); // Listen for chat
+                            if (typeof this.startOnboarding === 'function') {
+                                this.startOnboarding();
+                            } else {
+                                console.error("onboarding function missing");
+                            }
+                        } else {
+                            this.showLogin();
                         }
-                        else { this.showLogin(); }
-                    });
+                    } catch (err) {
+                        console.error("Auth State Flow Error:", err);
+                        alert("Critical Error in Login Flow: " + err.message);
+                    }
                 });
+            })
+            .catch((error) => {
+                console.error("Auth Persistence Error:", error);
+                // Fallback to basic listener if persistence fails
+                this.auth.onAuthStateChanged(user => {
+                    if (user) {
+                        this.showDashboard(user.email);
+                        this.loadSettings();
+                        this.setupRealtimeListeners();
+                        // this.loadFirestoreData();
+                    }
+                    else { this.showLogin(); }
+                });
+            });
 
-        } catch (e) {
-            console.error("Firebase Init Error:", e);
-            alert("Firebase Init Failed: " + e.message + "\nCheck your firebase_config.js!");
-        }
-    },
+    } catch(e) {
+        console.error("Firebase Init Error:", e);
+        alert("Firebase Init Failed: " + e.message + "\nCheck your firebase_config.js!");
+    }
+},
 
     loadFirestoreData: async function () {
         if (!this.db) return;
@@ -524,170 +512,172 @@ const crm = {
         }
     },
 
-    forceSeed: async function () {
-        if (confirm("This will attempt to write default data to your database. Continue?")) {
-            await this.seedFirestoreData();
-        }
-    },
+forceSeed: async function () {
+    if (confirm("This will attempt to write default data to your database. Continue?")) {
+        await this.seedFirestoreData();
+    }
+},
 
-    seedFirestoreData: async function () {
-        const today = new Date().toISOString().split('T')[0];
-        const batch = this.db.batch();
+seedFirestoreData: async function () {
+    const today = new Date().toISOString().split('T')[0];
+    const batch = this.db.batch();
 
-        const defaultLeads = [
-            { id: 'lead_1', name: 'John Doe', email: 'john@example.com', service: 'Emergency Repair', status: 'New', date: today }
-        ];
-        const defaultTasks = [
-            { id: 'task_1', date: today, time: '09:00', title: 'Install Water Heater', address: '123 Maple St', client: 'Sarah Smith' }
-        ];
-        const defaultInvoices = [
-            { id: 'INV-1001', client: 'Sarah Smith', clientId: 'client_2', date: today, amount: '450.00', status: 'Paid', items: [] }
-        ];
-        const defaultProducts = [
-            { id: 'prod_1', name: 'Service Call', category: 'Service', price: '99.00' },
-            { id: 'prod_2', name: 'Water Heater Install', category: 'Labor', price: '450.00' },
-            { id: 'prod_3', name: 'Copper Pipe (10ft)', category: 'Materials', price: '25.50' }
-        ];
-        const defaultClients = [
-            { id: 'client_1', name: 'John Doe', email: 'john@example.com', phone: '555-0101', address: '456 Oak Ave' },
-            { id: 'client_2', name: 'Sarah Smith', email: 'sarah@test.com', phone: '555-0102', address: '123 Maple St' }
-        ];
-        const defaultTeam = [
-            { id: 'user_1', name: 'Lukas Wilson', role: 'Owner', email: 'admin@wilco.com', phone: '555-0001' },
-            { id: 'user_2', name: 'Mike Plumber', role: 'Technician', email: 'mike@wilco.com', phone: '555-0002' }
-        ];
+    const defaultLeads = [
+        { id: 'lead_1', name: 'John Doe', email: 'john@example.com', service: 'Emergency Repair', status: 'New', date: today }
+    ];
+    const defaultTasks = [
+        { id: 'task_1', date: today, time: '09:00', title: 'Install Water Heater', address: '123 Maple St', client: 'Sarah Smith' }
+    ];
+    const defaultInvoices = [
+        { id: 'INV-1001', client: 'Sarah Smith', clientId: 'client_2', date: today, amount: '450.00', status: 'Paid', items: [] }
+    ];
+    const defaultProducts = [
+        { id: 'prod_1', name: 'Service Call', category: 'Service', price: '99.00' },
+        { id: 'prod_2', name: 'Water Heater Install', category: 'Labor', price: '450.00' },
+        { id: 'prod_3', name: 'Copper Pipe (10ft)', category: 'Materials', price: '25.50' }
+    ];
+    const defaultClients = [
+        { id: 'client_1', name: 'John Doe', email: 'john@example.com', phone: '555-0101', address: '456 Oak Ave' },
+        { id: 'client_2', name: 'Sarah Smith', email: 'sarah@test.com', phone: '555-0102', address: '123 Maple St' }
+    ];
+    const defaultTeam = [
+        { id: 'user_1', name: 'Lukas Wilson', role: 'Owner', email: 'admin@wilco.com', phone: '555-0001' },
+        { id: 'user_2', name: 'Mike Plumber', role: 'Technician', email: 'mike@wilco.com', phone: '555-0002' }
+    ];
 
-        // Add to batch
-        defaultLeads.forEach(item => batch.set(this.db.collection('leads').doc(item.id), item));
-        defaultTasks.forEach(item => batch.set(this.db.collection('tasks').doc(item.id), item));
-        defaultInvoices.forEach(item => batch.set(this.db.collection('invoices').doc(item.id), item));
-        defaultProducts.forEach(item => batch.set(this.db.collection('products').doc(item.id), item));
-        defaultClients.forEach(item => batch.set(this.db.collection('clients').doc(item.id), item));
-        defaultTeam.forEach(item => batch.set(this.db.collection('team').doc(item.id), item));
+    // Add to batch
+    defaultLeads.forEach(item => batch.set(this.db.collection('leads').doc(item.id), item));
+    defaultTasks.forEach(item => batch.set(this.db.collection('tasks').doc(item.id), item));
+    defaultInvoices.forEach(item => batch.set(this.db.collection('invoices').doc(item.id), item));
+    defaultProducts.forEach(item => batch.set(this.db.collection('products').doc(item.id), item));
+    defaultClients.forEach(item => batch.set(this.db.collection('clients').doc(item.id), item));
+    defaultTeam.forEach(item => batch.set(this.db.collection('team').doc(item.id), item));
 
-        try {
-            await batch.commit();
-            console.log("Database Seeded Successfully.");
-            alert("Success! Default data has been written to your database.");
-            this.loadFirestoreData(); // Reload to render
-        } catch (error) {
-            console.error("Error Seeding DB:", error);
-            alert("Seeding Failed: " + error.message + "\n\nLikely a permission issue.");
-        }
-    },
+    try {
+        await batch.commit();
+        console.log("Database Seeded Successfully.");
+        alert("Success! Default data has been written to your database.");
+        this.loadFirestoreData(); // Reload to render
+    } catch (error) {
+        console.error("Error Seeding DB:", error);
+        alert("Seeding Failed: " + error.message + "\n\nLikely a permission issue.");
+    }
+},
 
-    setupEventListeners: function () {
-        // Login Form
-        const loginForm = document.getElementById('login-form');
-        if (loginForm) {
-            loginForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const email = document.getElementById('email').value.trim();
-                const password = document.getElementById('password').value.trim();
-                const rememberEmail = document.getElementById('remember-email') ? document.getElementById('remember-email').checked : false;
+setupEventListeners: function () {
+    // Login Form
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const rememberEmail = document.getElementById('remember-email') ? document.getElementById('remember-email').checked : false;
 
-                if (!email || !password) {
-                    alert("Please enter both email and password.");
-                    return;
-                }
+            if (!email || !password) {
+                alert("Please enter both email and password.");
+                return;
+            }
 
-                if (rememberEmail) localStorage.setItem('wilco_saved_email', email);
-                else localStorage.removeItem('wilco_saved_email');
+            if (rememberEmail) localStorage.setItem('wilco_saved_email', email);
+            else localStorage.removeItem('wilco_saved_email');
 
-                console.log("Login Submit. Mock:", this.isMock, "Auth:", !!this.auth);
+            // DEBUG ALERT
+            alert("Login Clicked. Mock: " + this.isMock + ", Auth: " + (!!this.auth));
+            console.log("Login Submit. Mock:", this.isMock, "Auth:", !!this.auth);
 
-                if (this.isMock) {
-                    console.log("Proceeding with Mock Login");
-                    this.showDashboard(email);
-                } else if (this.auth) {
-                    console.log("Proceeding with Firebase Login");
-                    this.auth.signInWithEmailAndPassword(email, password)
-                        .catch((error) => {
-                            console.error("Login Failed", error);
-                            alert("Login Failed: " + error.message);
-                        });
-                } else {
-                    console.error("Login State Error: Not Mock and No Auth");
-                    alert("System Error: Login service not initialized.");
-                }
-            });
-        }
+            if (this.isMock) {
+                console.log("Proceeding with Mock Login");
+                this.showDashboard(email);
+            } else if (this.auth) {
+                console.log("Proceeding with Firebase Login");
+                this.auth.signInWithEmailAndPassword(email, password)
+                    .catch((error) => {
+                        console.error("Login Failed", error);
+                        alert("Login Failed: " + error.message);
+                    });
+            } else {
+                console.error("Login State Error: Not Mock and No Auth");
+                alert("System Error: Login service not initialized.");
+            }
+        });
+    }
 
-        // Logout
-        const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                if (this.auth) this.auth.signOut().then(() => location.reload());
-                else location.reload();
-            });
-        }
+    // Logout
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            if (this.auth) this.auth.signOut().then(() => location.reload());
+            else location.reload();
+        });
+    }
 
-        // Date Navigation
-        const prevDay = document.getElementById('prev-day');
-        const nextDay = document.getElementById('next-day');
-        const dateInput = document.getElementById('workday-date');
+    // Date Navigation
+    const prevDay = document.getElementById('prev-day');
+    const nextDay = document.getElementById('next-day');
+    const dateInput = document.getElementById('workday-date');
 
-        if (prevDay) prevDay.addEventListener('click', () => this.changeDate(-1));
-        if (nextDay) nextDay.addEventListener('click', () => this.changeDate(1));
-        if (dateInput) dateInput.addEventListener('change', (e) => this.setDate(e.target));
+    if (prevDay) prevDay.addEventListener('click', () => this.changeDate(-1));
+    if (nextDay) nextDay.addEventListener('click', () => this.changeDate(1));
+    if (dateInput) dateInput.addEventListener('change', (e) => this.setDate(e.target));
 
-        // Chat Form Listener
-        const chatForm = document.getElementById('chat-form');
-        if (chatForm) {
-            chatForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const input = document.getElementById('message-input');
-                const text = input.value.trim();
-                if (text) {
-                    this.sendMessage(text);
-                    input.value = '';
-                }
-            });
-        }
+    // Chat Form Listener
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if (text) {
+                this.sendMessage(text);
+                input.value = '';
+            }
+        });
+    }
 
-        // Password Toggle
-        const togglePassword = document.getElementById('toggle-password');
-        const passwordInput = document.getElementById('password');
-        if (togglePassword && passwordInput) {
-            togglePassword.addEventListener('click', () => {
-                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                passwordInput.setAttribute('type', type);
-                togglePassword.style.opacity = type === 'text' ? '1' : '0.5';
-            });
-        }
-    },
+    // Password Toggle
+    const togglePassword = document.getElementById('toggle-password');
+    const passwordInput = document.getElementById('password');
+    if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            togglePassword.style.opacity = type === 'text' ? '1' : '0.5';
+        });
+    }
+},
 
-    openModal: function (type, id) {
-        const container = document.getElementById('modal-fields');
-        const idField = document.getElementById('modal-id');
-        const typeField = document.getElementById('modal-type');
-        const title = document.getElementById('modal-title');
-        const modal = document.getElementById('modal-overlay');
+openModal: function (type, id) {
+    const container = document.getElementById('modal-fields');
+    const idField = document.getElementById('modal-id');
+    const typeField = document.getElementById('modal-type');
+    const title = document.getElementById('modal-title');
+    const modal = document.getElementById('modal-overlay');
 
-        if (!container || !modal) return;
+    if (!container || !modal) return;
 
-        container.innerHTML = '';
-        idField.value = id || '';
-        typeField.value = type;
+    container.innerHTML = '';
+    idField.value = id || '';
+    typeField.value = type;
 
-        let data = null;
-        if (id) {
-            if (type === 'lead') data = this.leads.find(x => x.id == id);
-            if (type === 'task') data = this.schedule.find(x => x.id == id);
-            if (type === 'invoice') data = this.invoices.find(x => x.id == id);
-            if (type === 'product') data = this.products.find(x => x.id == id);
-            if (type === 'client') data = this.clients.find(x => x.id == id);
-            if (type === 'knowledge') data = this.knowledge.find(x => x.id == id);
-            if (type === 'team') data = this.team.find(x => x.id == id);
-        }
+    let data = null;
+    if (id) {
+        if (type === 'lead') data = this.leads.find(x => x.id == id);
+        if (type === 'task') data = this.schedule.find(x => x.id == id);
+        if (type === 'invoice') data = this.invoices.find(x => x.id == id);
+        if (type === 'product') data = this.products.find(x => x.id == id);
+        if (type === 'client') data = this.clients.find(x => x.id == id);
+        if (type === 'knowledge') data = this.knowledge.find(x => x.id == id);
+        if (type === 'team') data = this.team.find(x => x.id == id);
+    }
 
-        // Initialize Media State
-        this.currentMedia = (data && data.media) ? [...data.media] : [];
-        setTimeout(() => this.renderMediaPreviews(), 50);
+    // Initialize Media State
+    this.currentMedia = (data && data.media) ? [...data.media] : [];
+    setTimeout(() => this.renderMediaPreviews(), 50);
 
-        if (type === 'lead') {
-            title.innerText = id ? 'Edit Lead' : 'New Lead';
-            container.innerHTML = `
+    if (type === 'lead') {
+        title.innerText = id ? 'Edit Lead' : 'New Lead';
+        container.innerHTML = `
                 <div class="input-group">
                     <label>Customer Name</label>
                     <input type="text" name="name" value="${data ? data.name : ''}" required>
@@ -720,12 +710,12 @@ const crm = {
                     <div id="media-previews" style="margin-top:10px; display:flex; flex-wrap:wrap;"></div>
                 </div>
             `;
-        }
+    }
 
-        if (type === 'task') {
-            title.innerText = id ? 'Edit Task' : 'New Task';
-            const defaultDate = this.currentViewDate;
-            container.innerHTML = `
+    if (type === 'task') {
+        title.innerText = id ? 'Edit Task' : 'New Task';
+        const defaultDate = this.currentViewDate;
+        container.innerHTML = `
                 <div class="input-group">
                     <label>Event Type</label>
                     <select name="calendarType" id="calendar-type-select" onchange="crm.toggleEventFields(this.value)">
@@ -770,13 +760,13 @@ const crm = {
                     </select>
                 </div>
             `;
-            setTimeout(() => crm.toggleEventFields(document.getElementById('calendar-type-select').value), 50);
+        setTimeout(() => crm.toggleEventFields(document.getElementById('calendar-type-select').value), 50);
 
-        }
+    }
 
-        if (type === 'product') {
-            title.innerText = id ? 'Edit Product' : 'New Product';
-            container.innerHTML = `
+    if (type === 'product') {
+        title.innerText = id ? 'Edit Product' : 'New Product';
+        container.innerHTML = `
                 <div class="input-group">
                     <label>Product Name</label>
                     <input type="text" name="name" value="${data ? data.name : ''}" required>
@@ -799,11 +789,11 @@ const crm = {
                     <div id="media-previews" style="margin-top:10px; display:flex; flex-wrap:wrap;"></div>
                 </div>
             `;
-        }
+    }
 
-        if (type === 'client') {
-            title.innerText = id ? 'Edit Client' : 'New Client';
-            container.innerHTML = `
+    if (type === 'client') {
+        title.innerText = id ? 'Edit Client' : 'New Client';
+        container.innerHTML = `
                 <div class="input-group">
                     <label>Client Name</label>
                     <input type="text" name="name" value="${data ? data.name : ''}" required>
@@ -821,13 +811,13 @@ const crm = {
                     <input type="text" name="address" value="${data ? data.address : ''}">
                 </div>
             `;
-        }
+    }
 
 
 
-        if (type === 'knowledge') {
-            title.innerText = id ? 'Edit Article' : 'New Knowledge Article';
-            container.innerHTML = `
+    if (type === 'knowledge') {
+        title.innerText = id ? 'Edit Article' : 'New Knowledge Article';
+        container.innerHTML = `
                 <div class="input-group">
                     <label>Title</label>
                     <input type="text" name="title" value="${data ? data.title : ''}" required placeholder="e.g. Warranty Policy">
@@ -837,11 +827,11 @@ const crm = {
                     <textarea name="content" rows="6" required placeholder="Enter the details...">${data ? data.content : ''}</textarea>
                 </div>
             `;
-        }
+    }
 
-        if (type === 'team') {
-            title.innerText = id ? 'Edit Member' : 'New Team Member';
-            container.innerHTML = `
+    if (type === 'team') {
+        title.innerText = id ? 'Edit Member' : 'New Team Member';
+        container.innerHTML = `
                 <div class="input-group">
                     <label>Full Name</label>
                     <input type="text" name="name" value="${data ? data.name : ''}" required>
@@ -864,11 +854,11 @@ const crm = {
                     <input type="text" name="phone" value="${data ? data.phone : ''}">
                 </div>
             `;
-        }
+    }
 
-        if (type === 'blocker') {
-            title.innerText = 'Block Time / Holiday';
-            container.innerHTML = `
+    if (type === 'blocker') {
+        title.innerText = 'Block Time / Holiday';
+        container.innerHTML = `
                 <div class="input-group">
                     <label>Title</label>
                     <input type="text" name="title" placeholder="St. Patrick's Day / Off" required>
@@ -885,18 +875,18 @@ const crm = {
                     </select>
                 </div>
             `;
-        }
+    }
 
-        if (type === 'invoice') {
-            title.innerText = id ? 'Edit Invoice' : 'New Invoice';
-            const today = new Date().toISOString().split('T')[0];
+    if (type === 'invoice') {
+        title.innerText = id ? 'Edit Invoice' : 'New Invoice';
+        const today = new Date().toISOString().split('T')[0];
 
-            // Client Dropdown Options
-            const clientOptions = this.clients.map(c =>
-                `<option value="${c.id}" ${data && (data.clientId === c.id || data.client === c.name) ? 'selected' : ''}>${c.name}</option>`
-            ).join('');
+        // Client Dropdown Options
+        const clientOptions = this.clients.map(c =>
+            `<option value="${c.id}" ${data && (data.clientId === c.id || data.client === c.name) ? 'selected' : ''}>${c.name}</option>`
+        ).join('');
 
-            container.innerHTML = `
+        container.innerHTML = `
                 <div class="input-group">
                     <label>Client</label>
                     <select name="clientId" required>
@@ -931,52 +921,52 @@ const crm = {
                 </div>
             `;
 
-            // Add existing items or one blank
-            if (data && data.items && data.items.length > 0) {
-                data.items.forEach(item => crm.addLineItem(item));
-            } else {
-                crm.addLineItem(); // One empty row
-            }
-
-            this.recalcTotal();
+        // Add existing items or one blank
+        if (data && data.items && data.items.length > 0) {
+            data.items.forEach(item => crm.addLineItem(item));
+        } else {
+            crm.addLineItem(); // One empty row
         }
 
         this.recalcTotal();
     }
 
-        // --- DYNAMIC FOOTER BUTTONS ---
-        const footer = modal.querySelector('.modal-footer');
-    // Remove existing custom buttons
-    const existingDelete = footer.querySelector('.btn-delete-modal');
-    if(existingDelete) existingDelete.remove();
+    this.recalcTotal();
+}
 
-    if(id) {
-        // Add Delete Button if Editing
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'btn-text danger btn-delete-modal';
-        delBtn.style.marginRight = 'auto'; // Push others to right
-        delBtn.innerHTML = "<i class='bx bx-trash'></i> Delete";
-        delBtn.onclick = () => {
-            this.deleteItem(type, id);
-            this.closeModal(); // Close after delete
-        };
-        footer.prepend(delBtn);
-    }
+// --- DYNAMIC FOOTER BUTTONS ---
+const footer = modal.querySelector('.modal-footer');
+// Remove existing custom buttons
+const existingDelete = footer.querySelector('.btn-delete-modal');
+if (existingDelete) existingDelete.remove();
 
-        modal.classList.add('open');
+if (id) {
+    // Add Delete Button if Editing
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'btn-text danger btn-delete-modal';
+    delBtn.style.marginRight = 'auto'; // Push others to right
+    delBtn.innerHTML = "<i class='bx bx-trash'></i> Delete";
+    delBtn.onclick = () => {
+        this.deleteItem(type, id);
+        this.closeModal(); // Close after delete
+    };
+    footer.prepend(delBtn);
+}
+
+modal.classList.add('open');
 },
 
-    addLineItem: function (item = null) {
-        const container = document.getElementById('line-items-container');
-const row = document.createElement('div');
-row.className = 'line-item-row';
+addLineItem: function (item = null) {
+    const container = document.getElementById('line-items-container');
+    const row = document.createElement('div');
+    row.className = 'line-item-row';
 
-const productOptions = this.products.map(p =>
-    `<option value="${p.id}" data-price="${p.price}" ${item && item.productId == p.id ? 'selected' : ''}>${p.name}</option>`
-).join('');
+    const productOptions = this.products.map(p =>
+        `<option value="${p.id}" data-price="${p.price}" ${item && item.productId == p.id ? 'selected' : ''}>${p.name}</option>`
+    ).join('');
 
-row.innerHTML = `
+    row.innerHTML = `
             <select class="item-select" onchange="crm.updateLineItem(this)">
                 <option value="">Select Product...</option>
                 ${productOptions}
@@ -985,12 +975,12 @@ row.innerHTML = `
             <input type="number" class="item-price" value="${item ? item.price : '0.00'}" step="0.01" onchange="crm.recalcTotal()">
             <button type="button" class="btn-icon danger" onclick="this.parentElement.remove(); crm.recalcTotal()">×</button>
         `;
-container.appendChild(row);
+    container.appendChild(row);
 
-if (!item) {
-    // New item logic if needed
-}
-    },
+    if (!item) {
+        // New item logic if needed
+    }
+},
 
 updateLineItem: function (selectEl) {
     const row = selectEl.parentElement;
@@ -2463,6 +2453,14 @@ toggleChat: function () {
         }
     }
 }
+};
+
+// Global Error Handler for Debugging
+window.onerror = function (msg, url, lineNo, columnNo, error) {
+    const errorMsg = `Global Error: ${msg}\nLine: ${lineNo}\nColumn: ${columnNo}\nError: ${error}`;
+    console.error(errorMsg);
+    alert(errorMsg);
+    return false;
 };
 
 document.addEventListener('DOMContentLoaded', () => {
