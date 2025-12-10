@@ -751,7 +751,10 @@ const crm = {
                 <div id="fields-client-info">
                     <div class="input-group">
                         <label>Client Name</label>
-                        <input type="text" name="client" value="${data ? data.client : ''}">
+                        <input type="text" name="client" list="param-client-list" value="${data ? data.client : ''}" placeholder="Type to search or add new...">
+                        <datalist id="param-client-list">
+                            ${this.clients.map(c => `<option value="${c.name}"></option>`).join('')}
+                        </datalist>
                     </div>
                     <div class="input-group">
                         <label>Address</label>
@@ -1346,9 +1349,25 @@ const crm = {
     setCalendarView: function (mode) {
         this.currentCalendarViewMode = mode;
         // Update Buttons
-        document.querySelectorAll('.view-controls .btn-text').forEach(b => b.classList.remove('active'));
-        const btn = document.getElementById(`btn-view-${mode}`);
-        if (btn) btn.classList.add('active');
+        const btnMonth = document.getElementById('btn-view-month');
+        const btnWeek = document.getElementById('btn-view-week');
+
+        // Reset Styles
+        [btnMonth, btnWeek].forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.background = 'transparent';
+            btn.style.boxShadow = 'none';
+            btn.style.fontWeight = 'normal';
+        });
+
+        // Set Active
+        const activeBtn = mode === 'month' ? btnMonth : btnWeek;
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+            activeBtn.style.background = 'white';
+            activeBtn.style.boxShadow = 'var(--shadow-sm)'; // Assuming var exists, else '0 1px 2px rgba(0,0,0,0.1)'
+            activeBtn.style.fontWeight = '600';
+        }
 
         this.renderCalendar();
     },
