@@ -758,7 +758,7 @@ const crm = {
                 </div>
             `;
             setTimeout(() => crm.toggleEventFields(document.getElementById('calendar-type-select').value), 50);
-            `;
+
         }
 
         if (type === 'product') {
@@ -1035,7 +1035,7 @@ const crm = {
         } else if (formType === 'task') {
             // Handle Unified Calendar Event logic
             const calendarType = document.getElementById('calendar-type-select').value;
-            
+
             if (calendarType === 'task') {
                 collectionName = 'tasks';
                 delete newItem.calendarType; // clean up
@@ -1137,10 +1137,10 @@ const crm = {
         document.getElementById('mobile-overlay').classList.remove('open');
     },
 
-    toggleEventFields: function(type) {
+    toggleEventFields: function (type) {
         const clientFields = document.getElementById('fields-client-info');
         const statusField = document.getElementById('field-status');
-        
+
         if (type === 'blocker') {
             if (clientFields) clientFields.style.display = 'none';
             if (statusField) statusField.style.display = 'block';
@@ -1310,10 +1310,10 @@ const crm = {
             // Find Events (Merge Schedule/Appointments and Tasks)
             const appointments = this.schedule ? this.schedule.filter(s => s.date === dateStr) : [];
             const tasks = this.tasks ? this.tasks.filter(t => t.date === dateStr) : [];
-            
+
             // Normalize for display
             const dayEvents = [
-                ...appointments.map(a => ({ ...a, _source: 'schedule' })), 
+                ...appointments.map(a => ({ ...a, _source: 'schedule' })),
                 ...tasks.map(t => ({ ...t, title: t.title || t.description, type: 'task', _source: 'task' }))
             ];
             // Also check leads with dates
@@ -1327,12 +1327,12 @@ const crm = {
                     const isBlocker = ev.type === 'blocker';
                     const isHoliday = ev.type === 'holiday';
                     const isTask = ev._source === 'task';
-                    
+
                     let pillClass = 'event-job'; // Default (Appointment)
                     if (isBlocker) pillClass = 'event-blocker';
                     if (isHoliday) pillClass = 'event-holiday';
                     if (isTask) pillClass = 'event-task'; // CSS class needed
-                    
+
                     html += `<div class="calendar-event ${pillClass}" title="${ev.title}">${ev.title}</div>`;
                     eventCount++;
                 }
@@ -1631,7 +1631,7 @@ const crm = {
         collections.forEach(col => {
             this.db.collection(col).onSnapshot(snapshot => {
                 const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                
+
                 // Map collections to state
                 if (col === 'schedule') this.schedule = items;
                 else if (col === 'tasks') this.tasks = items;
