@@ -1533,6 +1533,29 @@ const crm = {
         });
     },
 
+    startFirebaseMode: function () {
+        console.log("Starting Firebase Mode...");
+        this.db = firebase.firestore();
+        this.auth = firebase.auth();
+        this.storage = firebase.storage();
+
+        // Auth Listener
+        this.auth.onAuthStateChanged((user) => {
+            if (user) {
+                console.log("User Logged In:", user.email, user.uid);
+                document.getElementById('login-screen').style.display = 'none';
+                this.showDashboard(user.email);
+
+                // Initialize Listeners
+                this.setupRealtimeListeners();
+                this.setupMessageListener(); // Call this only after auth is confirmed
+            } else {
+                console.log("User Logged Out");
+                this.showLogin();
+            }
+        });
+    },
+
     setupMessageListener: function () {
         if (!this.db || !this.auth.currentUser) return;
 
