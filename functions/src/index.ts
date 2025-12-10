@@ -190,46 +190,54 @@ const bookAppointment = ai.defineTool(
             return { success: false, message: "Slot already taken." };
         }
 
-        // 1. Create Appointment (Fix field name mismatch: clientName -> client)
+        // 1. Resolve Client (Find or Create)
+        let resolvedClientId = "";
+        let finalClientName = clientName || "Valued Client";
+
+        if (clientName) {
+            try {
+                // Check if exists
+                const clientQuery = await db.collection("clients").where("name", "==", clientName).limit(1).get();
+                if (!clientQuery.empty) {
+                    resolvedClientId = clientQuery.docs[0].id;
+                    // details could be updated here if address provided? skipping for safety
+                } else {
+                    // Create New
+                    const newClientRef = await db.collection("clients").add({
+                        name: clientName,
+                        address: address || "",
+                        email: "",
+                        phone: "",
+                        status: "New",
+                        createdAt: admin.firestore.FieldValue.serverTimestamp()
+                    });
+                    resolvedClientId = newClientRef.id;
+                    console.log(`Auto-created new client: ${clientName} (${resolvedClientId})`);
+                }
+            } catch (err) {
+                console.error("Error resolving client:", err);
+            }
+        }
+
+        // 2. Create Appointment
         const ref = await db.collection("schedule").add({
             date: normDate,
             time: normTime,
             serviceType,
-            client: clientName || "Valued Client", // Fixed: 'client' matches crm.js
-            title: `${serviceType} - ${clientName || 'Client'}`, // Add title for Calendar View
+            client: finalClientName,
+            clientId: resolvedClientId, // Link to Client
+            title: `${serviceType} - ${finalClientName}`,
             address: address || "No Address Provided",
             details: details || "",
             status: "booked",
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // 2. Auto-Create Client if not exists
-        if (clientName) {
-            try {
-                const clientQuery = await db.collection("clients").where("name", "==", clientName).limit(1).get();
-                if (clientQuery.empty) {
-                    await db.collection("clients").add({
-                        name: clientName,
-                        address: address || "",
-                        email: "", // AI didn't capture email, leave empty
-                        phone: "",
-                        status: "New",
-                        createdAt: admin.firestore.FieldValue.serverTimestamp()
-                    });
-                    console.log(`Auto-created new client: ${clientName}`);
-                }
-            } catch (err) {
-                console.error("Error auto-creating client:", err);
-            }
-        }
-
-        await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date: normDate, time: normTime }, "success");
-        return { success: true, bookingId: ref.id, message: "Appointment confirmed and Client profile checked." };
+        await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date: normDate, time: normTime, createdClient: !!resolvedClientId }, "success");
+        return { success: true, bookingId: ref.id, message: "Appointment confirmed and client record synced." };
     }
 
-        await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date, time }, "success");
-return { success: true, bookingId: ref.id, message: "Appointment confirmed." };
-    }
+
 );
 
 const updateSchedule = ai.defineTool(
