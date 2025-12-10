@@ -1486,7 +1486,13 @@ const crm = {
         // Title: Week of ...
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
-        title.innerText = `${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}`;
+
+        // Calculate ISO Week Number
+        const oneJan = new Date(startOfWeek.getFullYear(), 0, 1);
+        const numberOfDays = Math.floor((startOfWeek - oneJan) / (24 * 60 * 60 * 1000));
+        const weekNum = Math.ceil((startOfWeek.getDay() + 1 + numberOfDays) / 7);
+
+        title.innerText = `Week ${weekNum} | ${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}`;
 
         // Get Settings Days/Hours
         const startHour = (this.settings && this.settings.startTime) ? parseInt(this.settings.startTime.split(':')[0]) : 8;
@@ -1552,7 +1558,6 @@ const crm = {
                 };
 
                 // Find events for this specific Hour slot
-                // Note: Simplified. Matches exact hour string currently.
                 const checkTime = (t) => t && t.startsWith(`${h.toString().padStart(2, '0')}`);
 
                 const slotEvents = [
@@ -1560,14 +1565,33 @@ const crm = {
                     ...(this.tasks || []).filter(t => t.date === dateStr && checkTime(t.time)).map(t => ({ ...t, _source: 'task', type: 'task' }))
                 ];
 
+                // Render events with relative positioning
+                cell.style.position = 'relative'; // Ensure absolute children work
+
                 slotEvents.forEach(ev => {
                     const isTask = ev._source === 'task';
                     const cssClass = isTask ? 'event-task' : (ev.type === 'blocker' ? 'event-blocker' : 'event-job');
                     const div = document.createElement('div');
                     div.className = `calendar-event ${cssClass}`;
-                    div.innerText = ev.title || ev.description || 'Event';
+                    div.innerText = (ev.time ? ev.time + ' ' : '') + (ev.title || ev.description || 'Event');
+
                     div.setAttribute('draggable', 'true');
                     div.setAttribute('ondragstart', `crm.handleDragStart(event, '${ev.id}', '${ev._source}')`);
+                    div.onclick = (e) => {
+                        e.stopPropagation(); // Prevent cell click
+                        crm.openModal(isTask ? 'task' : 'appointment', ev.id);
+                    }
+
+                    // Calculate Top Position based on minutes
+                    if (ev.time) {
+                        const mins = parseInt(ev.time.split(':')[1]) || 0;
+                        const topPercent = (mins / 60) * 100;
+                        div.style.position = 'absolute';
+                        div.style.top = `${topPercent}%`;
+                        div.style.width = '95%';
+                        div.style.zIndex = '10';
+                    }
+
                     cell.appendChild(div);
                 });
 
@@ -1830,13 +1854,29 @@ const crm = {
     // Let's implement handleDragLeave? 
     // MVP: Just reset background in Drop.
 
-    handleDrop: function (e, newDate, newTime = null) {
+    handleDrop: function (e, newDate, hourBase = null) {
         e.preventDefault();
         e.currentTarget.style.background = ""; // Reset
 
         try {
             const data = JSON.parse(e.dataTransfer.getData("text/plain"));
             const { id, type } = data;
+
+            // Calculate precise time if hourBase is provided
+            let newTime = hourBase;
+            if (hourBase) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const offsetY = e.clientY - rect.top;
+                const cellHeight = rect.height;
+                const minutes = Math.floor((offsetY / cellHeight) * 60);
+
+                // Round to nearest 5 minutes
+                const roundedMinutes = Math.round(minutes / 5) * 5;
+                const finalMinutes = roundedMinutes >= 60 ? 55 : roundedMinutes; // Clamp
+
+                const [h, _] = hourBase.split(':');
+                newTime = `${h}:${finalMinutes.toString().padStart(2, '0')}`;
+            }
 
             console.log(`Dropped ${type} ${id} to ${newDate} ${newTime || '(no time)'}`);
 
