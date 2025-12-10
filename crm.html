@@ -457,6 +457,31 @@
         </main>
     </div>
 
+    <!-- Floating AI Chat -->
+    <button class="ai-fab" onclick="crm.toggleChat()" title="Ask AI Agent">
+        <i class='bx bx-bot'></i>
+    </button>
+
+    <div id="ai-chat-window" class="ai-chat-window">
+        <div class="chat-header">
+            <h3 style="margin:0; font-size:1.1rem;">Wilco AI Assistant 🤖</h3>
+            <button class="close-btn" onclick="crm.toggleChat()">×</button>
+        </div>
+        <div id="chat-messages" class="chat-messages">
+            <div class="message system">
+                <p>Hello! I can help you with Quotes, Scheduling, and searching the Knowledge Base. How can I help?</p>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="message-input" placeholder="Ask about warranties, or 'Book a job'..."
+                onkeypress="if(event.key === 'Enter') { crm.sendMessage(this.value); this.value = ''; }">
+            <button class="btn-icon"
+                onclick="const el = document.getElementById('message-input'); crm.sendMessage(el.value); el.value='';">
+                <i class='bx bx-send'></i>
+            </button>
+        </div>
+    </div>
+
     <!-- Generic Modal Overlay -->
     <div id="modal-overlay" class="modal-overlay">
         <div class="modal-card">
