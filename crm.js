@@ -1248,7 +1248,11 @@ const crm = {
             try {
                 let collectionName = '';
                 if (type === 'lead') collectionName = 'leads';
-                if (type === 'task') collectionName = 'tasks';
+                if (type === 'task') {
+                    // Fix: Check if it's actually in schedule (Appointment) or tasks (Task)
+                    if (this.schedule.some(s => s.id === id)) collectionName = 'schedule';
+                    else collectionName = 'tasks';
+                }
                 if (type === 'invoice') collectionName = 'invoices';
                 if (type === 'product') collectionName = 'products';
                 if (type === 'client') collectionName = 'clients';
