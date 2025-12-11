@@ -500,8 +500,12 @@ export const clientAgentFlow = ai.defineFlow(
                - Check unpaid invoices (use 'listInvoices').
                - Admin: Block off time/days (use 'updateSchedule').
                - Knowledge Base: Answer general questions about warranties, services, or procedures by searching the database (use 'searchKnowledgeBase').
+               - Manage Clients: Create, Update, or Get client details.
 
-               If the user asks a general question (e.g., "Find me a plumber" or "I have a leak"), politely explain you can help book an appointment or check availability. Do not refuse to answer; instead, guide them to your tools.
+               CRITICAL INSTRUCTION:
+               If the 'bookAppointment' tool fails because the "Client is not found", you must IMMEDIATELY ask the user:
+               "I couldn't find a client named [Name]. Would you like me to create a new profile for them?"
+               Do NOT hallucinate that the appointment was booked if the tool returns success: false.
                `,
             tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule, createClient, updateClient, getClient, searchKnowledgeBase],
         });
