@@ -178,9 +178,13 @@ const bookAppointment = ai.defineTool(
         const normDate = date.split('-').map(p => p.padStart(2, '0')).join('-'); // Ensure 2025-01-01
         const normTime = time.split(':').map(p => p.padStart(2, '0')).join(':'); // Ensure 09:00
 
-        // Sanitize 'undefined' strings from AI
-        if (clientName === 'undefined' || clientName === 'null') clientName = "Valued Client";
-        if (serviceType === 'undefined' || serviceType === 'null') serviceType = "Service";
+        // Sanitize 'undefined' strings from AI (Case Insensitive)
+        if (!clientName || clientName.toLowerCase() === 'undefined' || clientName.toLowerCase() === 'null') {
+            clientName = "Valued Client";
+        }
+        if (!serviceType || serviceType.toLowerCase() === 'undefined' || serviceType.toLowerCase() === 'null') {
+            serviceType = "Service";
+        }
 
         console.log(`Tool: bookAppointment called for ${normDate} ${normTime}, Client: ${clientName}`);
 
@@ -232,7 +236,8 @@ const bookAppointment = ai.defineTool(
         });
 
         await logAIAction("bookAppointment", { bookingId: ref.id, clientName, date: normDate, time: normTime }, "success");
-        return { success: true, bookingId: ref.id, message: "Appointment confirmed." };
+        // Append Action Tag for Frontend
+        return { success: true, bookingId: ref.id, message: `Appointment confirmed for ${finalClientName}. [ACTION:OPEN_EVENT:${ref.id}]` };
     }
 
 

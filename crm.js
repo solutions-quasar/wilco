@@ -2315,14 +2315,32 @@ const crm = {
                         return;
                     }
 
+                    let aiText = result.data.text;
+                    let actionId = null;
+
+                    // Parse Action Tags (e.g. [ACTION:OPEN_EVENT:123])
+                    const actionMatch = aiText.match(/\[ACTION:OPEN_EVENT:(.*?)\]/);
+                    if (actionMatch) {
+                        actionId = actionMatch[1];
+                        aiText = aiText.replace(actionMatch[0], "").trim(); // Remove tag from display
+                        console.log("AI requested action: OPEN_EVENT", actionId);
+                    }
+
                     // Save Real Response to Firestore
                     await this.db.collection('messages').add({
-                        text: result.data.text,
+                        text: aiText,
                         sender: 'Wilco AI 🤖',
                         senderId: 'ai_agent',
                         ownerId: user.uid,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
+
+                    // Execute Action after slight delay to allow UI to settle
+                    if (actionId) {
+                        setTimeout(() => {
+                            crm.editEvent(actionId);
+                        }, 500);
+                    }
 
                     // Note: Listener will pick up the new message and trigger re-render
                 }).catch(error => {
