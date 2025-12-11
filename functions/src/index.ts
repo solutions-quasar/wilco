@@ -511,6 +511,12 @@ export const clientAgentFlow = ai.defineFlow(
                If the 'bookAppointment' tool fails because the "Client is not found", you must IMMEDIATELY ask the user:
                "I couldn't find a client named [Name]. Would you like me to create a new profile for them?"
                Do NOT hallucinate that the appointment was booked if the tool returns success: false.
+
+               TWO-STEP RULE:
+               If the user says "Yes" to creating a profile:
+               1. FIRST, call the 'createClient' tool.
+               2. SECOND, once that succeeds, call 'bookAppointment' again.
+               Do NOT just call 'bookAppointment' again without creating the client first.
                `,
             tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule, createClient, updateClient, getClient, searchKnowledgeBase],
         });
