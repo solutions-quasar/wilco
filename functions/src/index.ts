@@ -198,15 +198,54 @@ const bookAppointment = ai.defineTool(
             return { success: false, message: "Slot already taken." };
         }
 
+        // Helper for Smart Client Resolution
+        async function resolveClientSmart(db: any, name: string): Promise<string | null> {
+            const cleanName = name.trim();
+            if (!cleanName) return null;
+
+            // 1. Exact Match
+            const exact = await db.collection("clients").where("name", "==", cleanName).limit(1).get();
+            if (!exact.empty) return exact.docs[0].id;
+
+            // 2. Case-Insensitive / Fuzzy via First Name Prefix
+            // Strategy: Search by First Name, then filter manually in memory
+            const parts = cleanName.split(' ');
+            if (parts.length > 0) {
+                const firstName = parts[0];
+                // Get all clients starting with the first name (e.g. "Vanessa")
+                const snapshot = await db.collection("clients")
+                    .where("name", ">=", firstName)
+                    .where("name", "<=", firstName + '\uf8ff')
+                    .get();
+
+                if (!snapshot.empty) {
+                    // Find best match ignoring case and whitespace
+                    const target = cleanName.toLowerCase().replace(/\s+/g, '');
+                    for (const doc of snapshot.docs) {
+                        const docName = doc.data().name || "";
+                        const normalized = docName.toLowerCase().replace(/\s+/g, '');
+                        // Check if match
+                        if (normalized === target) return doc.id;
+                    }
+                }
+            }
+            return null;
+        }
+
         // 1. Resolve Client (Must Exist)
         let resolvedClientId = "";
         let finalClientName = clientName;
 
         if (clientName && clientName !== "Valued Client") {
             try {
-                const clientQuery = await db.collection("clients").where("name", "==", clientName).limit(1).get();
-                if (!clientQuery.empty) {
-                    resolvedClientId = clientQuery.docs[0].id;
+                // Use Smart Resolver
+                const foundId = await resolveClientSmart(db, clientName);
+
+                if (foundId) {
+                    resolvedClientId = foundId;
+                    // Optional: Update finalClientName to match DB exactly?
+                    const snap = await db.collection("clients").doc(foundId).get();
+                    if (snap.exists) finalClientName = snap.data()?.name || clientName;
                 } else {
                     // Client Not Found -> Fail and Prompt Creation
                     await logAIAction("bookAppointment", { clientName, reason: "Client Not Found" }, "failed");
@@ -458,7 +497,9 @@ export const clientAgentFlow = ai.defineFlow(
             }
         }
 
-        const today = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
         // Construct Multimodal Prompt
         let prompt: any[] = [];
@@ -488,8 +529,9 @@ export const clientAgentFlow = ai.defineFlow(
 
         const response = await ai.generate({
             prompt: prompt,
-            system: `${context} 
+            system: `${context}
                Current Date: ${today} (YYYY-MM-DD).
+               Current Time: ${currentTime}.
 
                === PREVIOUS CONVERSATION LOG ===
                ${historyText || "No previous history."}
