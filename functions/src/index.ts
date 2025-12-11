@@ -13,7 +13,7 @@ const db = admin.firestore();
 // Initialize Genkit
 const ai = genkit({
     plugins: [vertexAI({ location: 'us-central1' })],
-    model: 'vertexai/gemini-2.0-flash-lite-001',
+    model: 'vertexai/gemini-2.0-flash-001',
 });
 
 // --- DEFINE TOOLS ---
@@ -159,6 +159,45 @@ const listInvoices = ai.defineTool(
     }
 );
 
+// Helper for Smart Client Resolution
+async function resolveClientSmart(db: any, name: string): Promise<string | null> {
+    const cleanName = name.trim();
+    if (!cleanName) return null;
+
+    // 1. Exact Match
+    const exact = await db.collection("clients").where("name", "==", cleanName).limit(1).get();
+    if (!exact.empty) return exact.docs[0].id;
+
+    // 2. Case-Insensitive / Fuzzy via First Name Prefix
+    const parts = cleanName.split(' ');
+    if (parts.length > 0) {
+        let firstName = parts[0];
+        const titleCase = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+
+        let snapshot = await db.collection("clients")
+            .where("name", ">=", titleCase)
+            .where("name", "<=", titleCase + '\uf8ff')
+            .get();
+
+        if (snapshot.empty && firstName !== titleCase) {
+            snapshot = await db.collection("clients")
+                .where("name", ">=", firstName)
+                .where("name", "<=", firstName + '\uf8ff')
+                .get();
+        }
+
+        if (!snapshot.empty) {
+            const target = cleanName.toLowerCase().replace(/\s+/g, '');
+            for (const doc of snapshot.docs) {
+                const docName = doc.data().name || "";
+                const normalized = docName.toLowerCase().replace(/\s+/g, '');
+                if (normalized.includes(target) || target.includes(normalized)) return doc.id;
+            }
+        }
+    }
+    return null;
+}
+
 const bookAppointment = ai.defineTool(
     {
         name: "bookAppointment",
@@ -196,40 +235,6 @@ const bookAppointment = ai.defineTool(
         if (!existing.empty) {
             await logAIAction("bookAppointment", { date: normDate, time: normTime, reason: "Slot Taken" }, "failed");
             return { success: false, message: "Slot already taken." };
-        }
-
-        // Helper for Smart Client Resolution
-        async function resolveClientSmart(db: any, name: string): Promise<string | null> {
-            const cleanName = name.trim();
-            if (!cleanName) return null;
-
-            // 1. Exact Match
-            const exact = await db.collection("clients").where("name", "==", cleanName).limit(1).get();
-            if (!exact.empty) return exact.docs[0].id;
-
-            // 2. Case-Insensitive / Fuzzy via First Name Prefix
-            // Strategy: Search by First Name, then filter manually in memory
-            const parts = cleanName.split(' ');
-            if (parts.length > 0) {
-                const firstName = parts[0];
-                // Get all clients starting with the first name (e.g. "Vanessa")
-                const snapshot = await db.collection("clients")
-                    .where("name", ">=", firstName)
-                    .where("name", "<=", firstName + '\uf8ff')
-                    .get();
-
-                if (!snapshot.empty) {
-                    // Find best match ignoring case and whitespace
-                    const target = cleanName.toLowerCase().replace(/\s+/g, '');
-                    for (const doc of snapshot.docs) {
-                        const docName = doc.data().name || "";
-                        const normalized = docName.toLowerCase().replace(/\s+/g, '');
-                        // Check if match
-                        if (normalized === target) return doc.id;
-                    }
-                }
-            }
-            return null;
         }
 
         // 1. Resolve Client (Must Exist)
@@ -278,8 +283,28 @@ const bookAppointment = ai.defineTool(
         // Append Action Tag for Frontend
         return { success: true, bookingId: ref.id, message: `Appointment confirmed for ${finalClientName}. [ACTION:OPEN_EVENT:${ref.id}]` };
     }
+);
 
-
+const listClients = ai.defineTool(
+    {
+        name: "listClients",
+        description: "Lists all clients in the database. Use this if you cannot find a client by name using other tools, or if the user asks to see everyone.",
+        inputSchema: z.object({}),
+        outputSchema: z.object({
+            clients: z.array(z.object({ name: z.string(), email: z.string().optional(), phone: z.string().optional() })),
+            count: z.number()
+        }),
+    },
+    async () => {
+        const snapshot = await db.collection("clients").orderBy("name").limit(50).get(); // Limit 50 for safety
+        const clients = snapshot.docs.map(doc => ({
+            name: doc.data().name,
+            email: doc.data().email,
+            phone: doc.data().phone
+        }));
+        await logAIAction("listClients", { count: clients.length }, "success");
+        return { clients, count: clients.length };
+    }
 );
 
 const updateSchedule = ai.defineTool(
@@ -397,25 +422,31 @@ const getClient = ai.defineTool(
     },
     async ({ name, email }) => {
         try {
-            let query = db.collection("clients");
-            let snapshot;
-
             if (email) {
-                snapshot = await query.where("email", "==", email).limit(1).get();
-            } else if (name) {
-                snapshot = await query.where("name", "==", name).limit(1).get();
-            } else {
+                const snapshot = await db.collection("clients").where("email", "==", email).limit(1).get();
+                if (!snapshot.empty) {
+                    await logAIAction("getClient", { name, email }, "success");
+                    return { found: true, client: snapshot.docs[0].data() };
+                }
+            }
+
+            if (name) {
+                // Use Smart Resolver (Fuzzy Match)
+                const clientId = await resolveClientSmart(db, name);
+                if (clientId) {
+                    const doc = await db.collection("clients").doc(clientId).get();
+                    await logAIAction("getClient", { name, email }, "success");
+                    return { found: true, client: doc.data() };
+                }
+            }
+
+            if (!name && !email) {
                 return { found: false, message: "Must provide name or email" };
             }
 
-            if (snapshot.empty) {
-                await logAIAction("getClient", { name, email, result: "not found" }, "success");
-                return { found: false, message: "Client not found." };
-            }
+            await logAIAction("getClient", { name, email, result: "not found" }, "success");
+            return { found: false, message: "Client not found." };
 
-            const data = snapshot.docs[0].data();
-            await logAIAction("getClient", { name, email }, "success");
-            return { found: true, client: data };
         } catch (error: any) {
             await logAIAction("getClient", { name, email }, "failed");
             throw new Error(`Failed to get client: ${error.message}`);
@@ -527,44 +558,53 @@ export const clientAgentFlow = ai.defineFlow(
             historyText += "--- END HISTORY ---\n";
         }
 
-        const response = await ai.generate({
-            prompt: prompt,
-            system: `${context}
-               Current Date: ${today} (YYYY-MM-DD).
-               Current Time: ${currentTime}.
+        try {
+            const response = await ai.generate({
+                prompt: prompt,
+                system: `${context}
+                   Current Date: ${today} (YYYY-MM-DD).
+                   Current Time: ${currentTime}.
+    
+                   === PREVIOUS CONVERSATION LOG ===
+                   ${historyText || "No previous history."}
+                   =================================
+    
+                   You are a smart, helpful AI assistant for 'Wilco Plumbing'.
+                   IMPORTANT: You MUST reply in the same language as the user's last message (e.g. French -> French, English -> English).
+                   
+                   Your capabilities:
+                   - Check schedule availability (use 'checkAvailability').
+                   - Create formal quotes (use 'createQuote').
+                   - Book appointments (use 'bookAppointment' - CHECK AVAILABILITY FIRST).
+                   - Check unpaid invoices (use 'listInvoices').
+                   - Admin: Block off time/days (use 'updateSchedule').
+                   - Knowledge Base: Answer general questions about warranties, services, or procedures by searching the database (use 'searchKnowledgeBase').
+                   - Manage Clients: Create, Update, or Get client details.
+                   - List All Clients: Use 'listClients' to see everyone if you can't find a specific person.
+    
+                   CRITICAL INSTRUCTION:
+                   If the 'bookAppointment' tool fails because the "Client is not found", you must IMMEDIATELY ask the user:
+                   "I couldn't find a client named [Name]. Would you like me to create a new profile for them?"
+                   Do NOT hallucinate that the appointment was booked if the tool returns success: false.
+    
+                   TWO-STEP RULE:
+                   If the user says "Yes" to creating a profile:
+                   1. FIRST, call the 'createClient' tool.
+                   2. SECOND, once that succeeds, call 'bookAppointment' again.
+                   Do NOT just call 'bookAppointment' again without creating the client first.
+                   `,
+                tools: [listClients, checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule, createClient, updateClient, getClient, searchKnowledgeBase],
+            });
 
-               === PREVIOUS CONVERSATION LOG ===
-               ${historyText || "No previous history."}
-               =================================
-
-               You are a smart, helpful AI assistant for 'Wilco Plumbing'.
-               IMPORTANT: You MUST reply in the same language as the user's last message (e.g. French -> French, English -> English).
-               
-               Your capabilities:
-               - Check schedule availability (use 'checkAvailability').
-               - Create formal quotes (use 'createQuote').
-               - Book appointments (use 'bookAppointment' - CHECK AVAILABILITY FIRST).
-               - Check unpaid invoices (use 'listInvoices').
-               - Admin: Block off time/days (use 'updateSchedule').
-               - Knowledge Base: Answer general questions about warranties, services, or procedures by searching the database (use 'searchKnowledgeBase').
-               - Manage Clients: Create, Update, or Get client details.
-
-               CRITICAL INSTRUCTION:
-               If the 'bookAppointment' tool fails because the "Client is not found", you must IMMEDIATELY ask the user:
-               "I couldn't find a client named [Name]. Would you like me to create a new profile for them?"
-               Do NOT hallucinate that the appointment was booked if the tool returns success: false.
-
-               TWO-STEP RULE:
-               If the user says "Yes" to creating a profile:
-               1. FIRST, call the 'createClient' tool.
-               2. SECOND, once that succeeds, call 'bookAppointment' again.
-               Do NOT just call 'bookAppointment' again without creating the client first.
-               `,
-            tools: [checkAvailability, getProductPrice, createQuote, listInvoices, bookAppointment, updateSchedule, createClient, updateClient, getClient, searchKnowledgeBase],
-        });
-
-        // Debugging metadata
-        return { text: response.text };
+            // Debugging metadata
+            return { text: response.text };
+        } catch (error: any) {
+            console.error("AI Generation Error:", error);
+            if (error.message && (error.message.includes("429") || error.message.includes("Resource exhausted"))) {
+                return { text: "I'm currently experiencing very high traffic. Please try again in a few seconds." };
+            }
+            return { text: "Sorry, I encountered a temporary system error. Please try again." };
+        }
     }
 );
 
